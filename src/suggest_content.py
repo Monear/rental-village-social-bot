@@ -95,16 +95,8 @@ def add_idea_to_notion(notion, idea_content):
                 "Status": {"status": {"name": "AI Suggestion"}},
                 "Content Pillar": {"select": {"name": idea_content['pillar']}},
                 "Post Date": {"date": {"start": suggested_date}},
-            },
-            children=[
-                {
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": idea_content['body']}}]
-                    }
-                }
-            ]
+                "Copy": {"rich_text": [{"type": "text", "text": {"content": idea_content['body']}}]}
+            }
         )
         print(f"Successfully added idea: {idea_content['title']}")
     except Exception as e:
