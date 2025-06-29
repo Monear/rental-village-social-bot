@@ -42,33 +42,6 @@ def search_images(query, num_images=5):
         print(f"Error searching for images on Pexels: {e}")
         return []
 
-def add_idea_to_notion(notion, idea):
-    """Adds a single content idea, with image suggestions, to the Notion database."""
-    suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
-    
-    # Search for a list of relevant images
-    images = search_images(idea['keywords'])
-    
-    properties = {
-        "Name": {"title": [{"text": {"content": idea['title']}}]},
-        "Status": {"status": {"name": "AI Suggestion"}},
-        "Content Pillar": {"select": {"name": idea['pillar']}},
-        "Post Date": {"date": {"start": suggested_date}},
-        "Copy": {"rich_text": [{"type": "text", "text": {"content": idea['body']}}]}
-    }
-
-    # If images are found, format them as a list and add to the 'Suggested Images' field
-    if images:
-        image_links = "\n".join([img['src']['large'] for img in images])
-        properties["Suggested Images"] = {"rich_text": [{"type": "text", "text": {"content": image_links}}]}
-        print(f"Found {len(images)} image suggestions for '{idea['title']}'.")
-
-    try:
-        notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
-        print(f"Successfully added idea: {idea['title']}")
-    except Exception as e:
-        print(f"Error adding idea to Notion: {e}")
-
 def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
     """Generates content ideas using the Gemini API."""
     if not GEMINI_API_KEY:
@@ -112,13 +85,12 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
         return []
 
 def add_idea_to_notion(notion, idea):
-    """Adds a single content idea, with an image, to the Notion database."""
+    """Adds a single content idea, with image suggestions, to the Notion database."""
     suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
     
-    # Find the best image for the post
+    # Search for a list of relevant images
     images = search_images(idea['keywords'])
-    best_image_url = select_best_image_with_gemini(idea['body'], images)
-
+    
     properties = {
         "Name": {"title": [{"text": {"content": idea['title']}}]},
         "Status": {"status": {"name": "AI Suggestion"}},
@@ -126,14 +98,16 @@ def add_idea_to_notion(notion, idea):
         "Post Date": {"date": {"start": suggested_date}},
         "Copy": {"rich_text": [{"type": "text", "text": {"content": idea['body']}}]}
     }
-    if best_image_url:
-        properties["Creative"] = {"files": [{"name": best_image_url, "type": "external", "external": {"url": best_image_url}}]}
+
+    # If images are found, format them as a list and add to the 'Suggested Images' field
+    if images:
+        image_links = "\n".join([img['src']['large'] for img in images])
+        properties["Suggested Images"] = {"rich_text": [{"type": "text", "text": {"content": image_links}}]}
+        print(f"Found {len(images)} image suggestions for '{idea['title']}'.")
 
     try:
         notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
         print(f"Successfully added idea: {idea['title']}")
-        if best_image_url:
-            print(f"  - with image: {best_image_url}")
     except Exception as e:
         print(f"Error adding idea to Notion: {e}")
 
