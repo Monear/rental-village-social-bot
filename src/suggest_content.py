@@ -51,13 +51,13 @@ def add_idea_to_notion(notion, idea_content):
                     ]
                 },
                 "Status": {
-                    "select": {
+                    "status": {
                         "name": "AI Suggestion"
                     }
                 },
                 "Content Pillar": {
                     "select": {
-                        "name": "Project of the Week"
+                        "name": idea_content['pillar']
                     }
                 },
                 "Post Date": {
