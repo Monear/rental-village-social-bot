@@ -56,12 +56,15 @@ def generate_ideas_with_gemini(guidelines, num_ideas=3, user_input=None):
         """
 
     prompt += """
-    For each idea, provide a content pillar and the core idea.
-    Return your response as a valid JSON array of objects, where each object has a "pillar" and "idea" key.
+    For each idea, provide a content pillar, a short, catchy title (under 100 characters), and the full post body.
+    Return your response as a valid JSON array of objects, where each object has a "pillar", "title", and "body" key.
     Example:
     [
-        {"pillar": "Tool Spotlight", "idea": "A 15-second video on the versatility of our new mini-excavator."},
-        {"pillar": "How-To Guide", "idea": "Blog Post: 5 Steps to a Perfectly Level Patio Base."}
+        {
+            "pillar": "Tool Spotlight",
+            "title": "Mini-Excavator: Small But Mighty",
+            "body": "Check out this 15-second video on the versatility of our new mini-excavator. Perfect for tight spaces and big jobs! #ToolRental #Excavator"
+        }
     ]
     """
 
@@ -88,13 +91,22 @@ def add_idea_to_notion(notion, idea_content):
         notion.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
-                "Name": {"title": [{"text": {"content": f"[{idea_content['pillar']}] {idea_content['idea'][:100]}"}}]},
+                "Name": {"title": [{"text": {"content": idea_content['title']}}]},
                 "Status": {"status": {"name": "AI Suggestion"}},
                 "Content Pillar": {"select": {"name": idea_content['pillar']}},
                 "Post Date": {"date": {"start": suggested_date}},
-            }
+            },
+            children=[
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": idea_content['body']}}]
+                    }
+                }
+            ]
         )
-        print(f"Successfully added idea: {idea_content['idea']}")
+        print(f"Successfully added idea: {idea_content['title']}")
     except Exception as e:
         print(f"Error adding idea to Notion: {e}")
 
