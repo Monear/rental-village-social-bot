@@ -2,3 +2,4 @@ notion-client
 requests
 python-dotenv
 google-generativeai
+pexels-api-py
