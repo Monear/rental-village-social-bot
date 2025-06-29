@@ -42,39 +42,32 @@ def search_images(query, num_images=5):
         print(f"Error searching for images on Pexels: {e}")
         return []
 
-def select_best_image_with_gemini(post_body, images):
-    """Uses Gemini to select the most thematically appropriate image for a post."""
-    if not images:
-        return None
+def add_idea_to_notion(notion, idea):
+    """Adds a single content idea, with image suggestions, to the Notion database."""
+    suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
+    
+    # Search for a list of relevant images
+    images = search_images(idea['keywords'])
+    
+    properties = {
+        "Name": {"title": [{"text": {"content": idea['title']}}]},
+        "Status": {"status": {"name": "AI Suggestion"}},
+        "Content Pillar": {"select": {"name": idea['pillar']}},
+        "Post Date": {"date": {"start": suggested_date}},
+        "Copy": {"rich_text": [{"type": "text", "text": {"content": idea['body']}}]}
+    }
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # If images are found, format them as a list and add to the 'Suggested Images' field
+    if images:
+        image_links = "\n".join([img['src']['large'] for img in images])
+        properties["Suggested Images"] = {"rich_text": [{"type": "text", "text": {"content": image_links}}]}
+        print(f"Found {len(images)} image suggestions for '{idea['title']}'.")
 
-    image_options = "\n".join([f"- URL: {img['src']['original']}, Description: {img['alt']}" for img in images])
-
-    prompt = f"""
-    You are an expert art director. Your task is to choose the best image for a social media post.
-
-    This is the post's content:
-    ---
-    {post_body}
-    ---
-
-    Here are the image options available:
-    ---
-    {image_options}
-    ---
-
-    Review the post and the image options carefully. Select the single best image that matches the tone, message, and subject matter of the post.
-    Return only the URL of your chosen image, and nothing else.
-    """
-    print("Asking AI art director to select the best image...")
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
+        print(f"Successfully added idea: {idea['title']}")
     except Exception as e:
-        print(f"Error selecting image with Gemini: {e}")
-        return None
+        print(f"Error adding idea to Notion: {e}")
 
 def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
     """Generates content ideas using the Gemini API."""
