@@ -6,6 +6,7 @@ import requests
 from datetime import date, timedelta
 import random
 from dotenv import load_dotenv
+from utils.general import read_file_content
 
 load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
@@ -145,7 +146,25 @@ def add_idea_to_notion(notion, idea, generate_image_with_gemini):
     try:
         page_response = notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
         page_id = page_response['id']
-        image_prompt = idea.get('body') or idea.get('keywords', '')
+        
+        # Read image generation instructions
+        script_dir = os.path.dirname(__file__)
+        image_instructions_path = os.path.join(script_dir, '..', 'prompts', 'image_generation_instructions.md')
+        image_instructions = read_file_content(image_instructions_path)
+
+        title_context = idea.get('title', '')
+        body_context = idea.get('body', '')
+        keywords_context = idea.get('keywords', '')
+
+        # Combine available context for the image prompt
+        base_image_prompt_parts = []
+        if title_context: base_image_prompt_parts.append(f"Title: {title_context}")
+        if body_context: base_image_prompt_parts.append(f"Description: {body_context}")
+        if keywords_context: base_image_prompt_parts.append(f"Keywords: {keywords_context}")
+
+        base_image_prompt = ". ".join(base_image_prompt_parts)
+        image_prompt = f"{image_instructions}\n\n{base_image_prompt}" if image_instructions else base_image_prompt
+
         image_filename = f"{idea['title'].replace(' ', '_').replace('/', '_')[:50]}.png"
         script_dir = os.path.dirname(__file__)
         images_dir = os.path.join(script_dir, '..', 'generated_images')

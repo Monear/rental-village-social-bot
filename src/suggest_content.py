@@ -25,7 +25,7 @@ def main():
         raise ValueError("Required API keys (NOTION, GEMINI) must be set in the .env file.")
 
     script_dir = os.path.dirname(__file__)
-    guidelines_path = os.path.join(script_dir, '..', 'strategy_documents', 'content_guidelines.md')
+    guidelines_path = os.path.join(script_dir, 'prompts', 'content_generation_prompt.md')
     content_guidelines = read_file_content(guidelines_path)
     if not content_guidelines:
         return
