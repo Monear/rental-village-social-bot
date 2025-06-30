@@ -67,11 +67,6 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
     ]
     """
     print("Generating content ideas with Gemini...")
-
-        }
-    ]
-    """
-    print("Generating content ideas with Gemini...")
     try:
         response = client.models.generate_content(
             model="gemini-1.5-flash",
