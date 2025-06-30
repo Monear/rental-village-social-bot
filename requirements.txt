@@ -4,3 +4,4 @@ python-dotenv
 google-genai>=0.1.0
 pillow
 pytest
+WooCommerce

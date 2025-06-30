@@ -8,10 +8,12 @@ from dotenv import load_dotenv
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None):
+def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None, machine_context=None):
     """Generates content ideas using the Gemini API (new google-genai SDK)."""
     if existing_ideas is None:
         existing_ideas = []
+    if machine_context is None:
+        machine_context = {}
 
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY must be set in the .env file.")
@@ -20,6 +22,21 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
     prompt = f"""
     You are a creative social media manager for a tool rental company.
     Your task is to generate {num_ideas} fresh, engaging content ideas.
+    
+    """
+    if machine_context:
+        prompt += """
+        Here is important context about the business and available machines. 
+        You MUST only generate ideas for machines listed under 'available_machines'.
+        Leverage the descriptions, features, and use cases provided for each machine.
+        Also, incorporate general business information where relevant.
+        ---
+        Business and Machine Context:
+        {json.dumps(machine_context, indent=2)}
+        ---
+        """
+
+    prompt += f"""
     Adhere strictly to the following Content Guidelines:
     ---
     {guidelines}
@@ -46,6 +63,11 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
             "title": "Mini-Excavator: Small But Mighty",
             "body": "Check out this 15-second video on the versatility of our new mini-excavator. Perfect for tight spaces and big jobs! #ToolRental #Excavator",
             "keywords": "excavator, construction, digging, small space"
+        }
+    ]
+    """
+    print("Generating content ideas with Gemini...")
+
         }
     ]
     """

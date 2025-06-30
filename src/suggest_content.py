@@ -6,6 +6,7 @@ from utils.general import read_file_content
 from utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini
 from utils.notion_helpers import add_idea_to_notion, get_existing_notion_ideas
 import notion_client
+import json
 
 # Load environment variables
 load_dotenv()
@@ -30,13 +31,25 @@ def main():
     if not content_guidelines:
         return
 
+    # Load Machine Context Provider (MCP)
+    mcp_path = os.path.join(script_dir, 'data', 'machine_context.json')
+    try:
+        with open(mcp_path, 'r') as f:
+            machine_context = json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Machine context file not found at {mcp_path}. Proceeding without MCP.")
+        machine_context = {}
+    except json.JSONDecodeError:
+        print(f"Warning: Could not decode JSON from {mcp_path}. Proceeding without MCP.")
+        machine_context = {}
+
     notion = notion_client.Client(auth=NOTION_API_KEY)
     
     print("Fetching existing ideas from Notion...")
     existing_ideas = get_existing_notion_ideas(notion, NOTION_DATABASE_ID)
     print(f"Found {len(existing_ideas)} existing ideas.")
 
-    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text, existing_ideas)
+    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text, existing_ideas, machine_context)
 
     if not ideas:
         print("No ideas were generated. Exiting.")

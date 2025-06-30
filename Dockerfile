@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src
 COPY strategy_documents/ ./strategy_documents
 COPY tests/ ./tests
+COPY src/data/ ./src/data
 
 # This container will run scripts on-demand.
 # The command will be provided when we run the container.
