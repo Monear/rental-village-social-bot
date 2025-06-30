@@ -102,17 +102,14 @@ def upload_image_to_notion(notion, page_id, image_path):
     """Uploads an image file to the Notion page's 'Creative' (files) property using Notion's direct upload."""
     try:
         # Step 1: Initiate file upload to get a presigned URL and file ID
-        initiate_upload_endpoint = "https://api.notion.com/v1/files"
+        initiate_upload_endpoint = "https://api.notion.com/v1/file_uploads"
         headers = {
             "Authorization": f"Bearer {NOTION_API_KEY}",
             "Notion-Version": "2022-06-28",
             "Content-Type": "application/json"
         }
-        file_name = os.path.basename(image_path)
         initiate_payload = {
-            "name": file_name,
-            "mime_type": "image/png", # Assuming PNG, adjust if necessary
-            "parent": {"type": "page_id", "page_id": page_id}
+            "mode": "single_part"
         }
         
         print("--- Initiating Notion file upload ---")
@@ -136,6 +133,7 @@ def upload_image_to_notion(notion, page_id, image_path):
         print("Image uploaded successfully to Notion's internal storage.")
 
         # Step 3: Update the Notion page with the internal Notion file ID
+        file_name = os.path.basename(image_path)
         notion.pages.update(
             page_id=page_id,
             properties={
