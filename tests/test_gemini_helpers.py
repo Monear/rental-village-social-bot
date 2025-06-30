@@ -2,7 +2,7 @@ import os
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-from utils import gemini_helpers
+from src.utils import gemini_helpers
 
 # Patch environment variable for API key
 def setup_module(module):

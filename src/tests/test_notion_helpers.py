@@ -1,7 +1,7 @@
 import os
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
-from utils import notion_helpers
+from src.utils import notion_helpers
 
 # Patch environment variables for Notion
 NOTION_API_KEY = "fake-notion-key"
