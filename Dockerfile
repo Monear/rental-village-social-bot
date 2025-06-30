@@ -5,6 +5,8 @@ FROM python:3.10-slim-bullseye
 # Set the working directory in the container
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+
 # Copy the requirements file into the container at /app
 # This is done first to leverage Docker's layer caching.
 # If requirements.txt doesn't change, this layer won't be rebuilt.
