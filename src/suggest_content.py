@@ -6,7 +6,7 @@ import random
 from datetime import date, timedelta
 import notion_client
 import google.generativeai as genai
-from pexelsapi.pexels import Pexels
+from pyunsplash import PyUnsplash
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -16,7 +16,7 @@ load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 
 # --- Helper Functions ---
 
@@ -29,18 +29,54 @@ def read_file_content(file_path):
         print(f"Error: The file {file_path} was not found.")
         return None
 
-def search_images(query, num_images=5):
-    """Searches for images using the Pexels API."""
-    if not PEXELS_API_KEY:
-        print("Warning: PEXELS_API_KEY is not set. Skipping image search.")
-        return []
+def get_search_queries_with_gemini(post_body):
+    """Uses a specialized AI prompt to generate effective search queries."""
+    print("Asking AI Search Expert for the best queries...")
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    prompt = f"""
+    You are an expert at finding compelling images on stock photo sites like Unsplash.
+    Based on the following social media post, generate 3-5 highly descriptive, effective search queries to find the perfect photo.
+    Focus on action, results, and professional-looking images. Avoid generic terms.
+
+    POST:
+    ---
+    {post_body}
+    ---
+
+    Return your response as a JSON array of strings.
+    Example:
+    ["professional deck power washing", "clean wood patio before and after", "outdoor deck restoration"]
+    """
     try:
-        pexel = Pexels(PEXELS_API_KEY)
-        search_results = pexel.search_photos(query=query, per_page=num_images)
-        return search_results.get('photos', [])
+        response = model.generate_content(prompt)
+        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
+        return json.loads(cleaned_response)
     except Exception as e:
-        print(f"Error searching for images on Pexels: {e}")
+        print(f"Error generating search queries with Gemini: {e}")
         return []
+
+def search_images_on_unsplash(queries, num_per_query=2):
+    """Searches for images on Unsplash using a list of queries and consolidates the results."""
+    if not UNSPLASH_ACCESS_KEY:
+        print("Warning: UNSPLASH_ACCESS_KEY is not set. Skipping image search.")
+        return []
+    
+    pu = PyUnsplash(api_key=UNSPLASH_ACCESS_KEY)
+    all_image_urls = set() # Use a set to avoid duplicate images
+
+    for query in queries:
+        try:
+            print(f"Searching Unsplash for: '{query}'")
+            photos = pu.photos(type_='search', per_page=num_per_query, query=query)
+            for photo in photos.entries:
+                all_image_urls.add(photo.link_download)
+        except Exception as e:
+            print(f"Error searching Unsplash for '{query}': {e}")
+            continue
+            
+    return list(all_image_urls)
 
 def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
     """Generates content ideas using the Gemini API."""
@@ -62,15 +98,14 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
         prompt += f"Base your suggestions on this user-provided text:\n---\n{user_input}\n---\n"
 
     prompt += """
-    For each idea, provide a content pillar, a short catchy title (under 100 chars), the full post body, and 3-5 relevant keywords for an image search.
-    Return your response as a valid JSON array of objects. Each object must have "pillar", "title", "body", and "keywords" keys.
+    For each idea, provide a content pillar, a short catchy title (under 100 chars), and the full post body.
+    Return your response as a valid JSON array of objects. Each object must have "pillar", "title", and "body" keys.
     Example:
     [
         {
             "pillar": "Tool Spotlight",
             "title": "Mini-Excavator: Small But Mighty",
-            "body": "Check out this 15-second video on the versatility of our new mini-excavator. Perfect for tight spaces and big jobs! #ToolRental #Excavator",
-            "keywords": "excavator, construction, digging, small space"
+            "body": "Check out this 15-second video on the versatility of our new mini-excavator. Perfect for tight spaces and big jobs! #ToolRental #Excavator"
         }
     ]
     """
@@ -88,22 +123,24 @@ def add_idea_to_notion(notion, idea):
     """Adds a single content idea, with image suggestions, to the Notion database."""
     suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
     
-    # Search for a list of relevant images
-    images = search_images(idea['keywords'])
+    # Use the AI Search Expert to get better queries
+    search_queries = get_search_queries_with_gemini(idea['body'])
+    
+    # Get a consolidated list of image URLs
+    image_urls = search_images_on_unsplash(search_queries)
     
     properties = {
-        "Name": {"title": [{"text": {"content": idea['title']}}]},
+        "Name": {"title": [{"text": {"content": idea['title']}}]}
         "Status": {"status": {"name": "AI Suggestion"}},
         "Content Pillar": {"select": {"name": idea['pillar']}},
         "Post Date": {"date": {"start": suggested_date}},
         "Copy": {"rich_text": [{"type": "text", "text": {"content": idea['body']}}]}
     }
 
-    # If images are found, format them as a list and add to the 'Suggested Images' field
-    if images:
-        image_links = "\n".join([img['src']['large'] for img in images])
+    if image_urls:
+        image_links = "\n".join(image_urls)
         properties["Suggested Images"] = {"rich_text": [{"type": "text", "text": {"content": image_links}}]}
-        print(f"Found {len(images)} image suggestions for '{idea['title']}'.")
+        print(f"Found {len(image_urls)} image suggestions for '{idea['title']}'.")
 
     try:
         notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
