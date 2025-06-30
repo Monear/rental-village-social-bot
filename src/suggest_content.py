@@ -117,8 +117,8 @@ def upload_image_to_notion(notion, page_id, image_path):
         initiate_response.raise_for_status()
         initiate_data = initiate_response.json()
         
-        upload_url = initiate_data['file']['upload_url']
-        file_id = initiate_data['file']['id']
+        upload_url = initiate_data['upload_url']
+        file_id = initiate_data['id']
         
         # Step 2: Upload the actual file to the presigned URL
         print(f"--- Uploading image to {upload_url} ---")
