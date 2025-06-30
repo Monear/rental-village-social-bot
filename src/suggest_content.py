@@ -28,13 +28,11 @@ def read_file_content(file_path):
         return None
 
 def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
-    """Generates content ideas using the Gemini API."""
+    """Generates content ideas using the Gemini API (new google-genai SDK)."""
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY must be set in the .env file.")
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-
+    client = genai.Client(api_key=GEMINI_API_KEY)
     prompt = f"""
     You are a creative social media manager for a tool rental company.
     Your task is to generate {num_ideas} fresh, engaging content ideas.
@@ -61,12 +59,16 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
     """
     print("Generating content ideas with Gemini...")
     try:
-        response = model.generate_content(prompt)
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
+        cleaned_response = response.candidates[0].content.parts[0].text.strip().replace("```json", "").replace("```", "").strip()
         return json.loads(cleaned_response)
     except Exception as e:
         print(f"Error generating ideas with Gemini: {e}")
-        print(f"Raw response from API: {response.text}")
+        if 'response' in locals():
+            print(f"Raw response from API: {getattr(response, 'text', '')}")
         return []
 
 def generate_image_with_gemini(prompt, output_path):
@@ -76,7 +78,7 @@ def generate_image_with_gemini(prompt, output_path):
         from PIL import Image
         from io import BytesIO
 
-        client = genai.Client()
+        client = genai.Client(api_key=GEMINI_API_KEY)
         response = client.models.generate_images(
             model="imagen-3.0-generate-002",
             prompt=prompt,
