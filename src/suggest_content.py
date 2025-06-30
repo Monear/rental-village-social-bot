@@ -143,7 +143,9 @@ def add_idea_to_notion(notion, idea):
         image_prompt = idea.get('body') or idea.get('keywords', '')
         image_filename = f"{idea['title'].replace(' ', '_').replace('/', '_')}.png"
         script_dir = os.path.dirname(__file__)
-        output_path = os.path.join(script_dir, '..', 'generated_images', image_filename)
+        images_dir = os.path.join(script_dir, '..', 'generated_images')
+        os.makedirs(images_dir, exist_ok=True)
+        output_path = os.path.join(images_dir, image_filename)
         local_image_path = generate_image_with_gemini(image_prompt, output_path)
         if local_image_path:
             print(f"Generated image for '{idea['title']}' and saved to '{local_image_path}'.")
