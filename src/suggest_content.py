@@ -4,7 +4,7 @@ import argparse
 from dotenv import load_dotenv
 from utils.general import read_file_content
 from utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini
-from utils.notion_helpers import add_idea_to_notion
+from utils.notion_helpers import add_idea_to_notion, get_existing_notion_ideas
 import notion_client
 
 # Load environment variables
@@ -31,7 +31,12 @@ def main():
         return
 
     notion = notion_client.Client(auth=NOTION_API_KEY)
-    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text)
+    
+    print("Fetching existing ideas from Notion...")
+    existing_ideas = get_existing_notion_ideas(notion, NOTION_DATABASE_ID)
+    print(f"Found {len(existing_ideas)} existing ideas.")
+
+    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text, existing_ideas)
 
     if not ideas:
         print("No ideas were generated. Exiting.")

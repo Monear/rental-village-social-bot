@@ -100,6 +100,38 @@ def upload_image_to_notion(page_id, image_path, property_name="Creative"):
         print(f"Error uploading file: {e}")
         return False
 
+def get_existing_notion_ideas(notion, database_id):
+    """Fetches existing content ideas (titles and copies) from the Notion database."""
+    existing_ideas = []
+    try:
+        response = notion.databases.query(
+            database_id=database_id,
+            filter={
+                "or": [
+                    {"property": "Name", "title": {"is_not_empty": True}},
+                    {"property": "Copy", "rich_text": {"is_not_empty": True}}
+                ]
+            }
+        )
+        for page in response["results"]:
+            title = ""
+            if "Name" in page["properties"] and page["properties"]["Name"]["type"] == "title":
+                title_parts = page["properties"]["Name"]["title"]
+                if title_parts:
+                    title = title_parts[0]["plain_text"]
+
+            copy = ""
+            if "Copy" in page["properties"] and page["properties"]["Copy"]["type"] == "rich_text":
+                copy_parts = page["properties"]["Copy"]["rich_text"]
+                if copy_parts:
+                    copy = copy_parts[0]["plain_text"]
+            
+            if title or copy:
+                existing_ideas.append({"title": title, "copy": copy})
+    except Exception as e:
+        print(f"Error fetching existing Notion ideas: {e}")
+    return existing_ideas
+
 def add_idea_to_notion(notion, idea, generate_image_with_gemini):
     """Adds a single content idea, with AI-generated image, to the Notion database."""
     suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()

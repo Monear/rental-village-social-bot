@@ -8,8 +8,11 @@ from dotenv import load_dotenv
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
+def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None):
     """Generates content ideas using the Gemini API (new google-genai SDK)."""
+    if existing_ideas is None:
+        existing_ideas = []
+
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY must be set in the .env file.")
 
@@ -24,6 +27,14 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None):
     """
     if user_input:
         prompt += f"Base your suggestions on this user-provided text:\n---\n{user_input}\n---\n"
+
+    if existing_ideas:
+        prompt += """
+        IMPORTANT: Avoid generating ideas that are too similar to the following existing ideas. Focus on novelty and distinctiveness:
+        ---
+        """
+        for i, idea in enumerate(existing_ideas):
+            prompt += f"Idea {i+1}:\nTitle: {idea['title']}\nCopy: {idea['copy']}\n---\n"
 
     prompt += """
     For each idea, provide a content pillar, a short catchy title (under 100 chars), the full post body, and 3-5 relevant keywords for an image search.
