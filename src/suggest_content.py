@@ -104,7 +104,7 @@ def upload_image_to_notion(notion, page_id, image_path):
         # Step 1: Get a presigned URL from Notion for the upload
         get_url_endpoint = f"https://api.notion.com/v1/pages/{page_id}/properties/Creative/files"
         headers = {
-            "Authorization": f"Bearer {notion.auth}",
+            "Authorization": f"Bearer {NOTION_API_KEY}",
             "Notion-Version": "2022-06-28",
             "Content-Type": "application/json"
         }
