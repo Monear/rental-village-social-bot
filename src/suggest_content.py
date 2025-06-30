@@ -4,6 +4,7 @@ import argparse
 import json
 import random
 from datetime import date, timedelta
+from pathlib import Path
 import notion_client
 import requests
 from google import genai
@@ -98,59 +99,136 @@ def generate_image_with_gemini(prompt, output_path):
         print(f"Error generating image with Gemini: {e}")
         return None
 
-def upload_image_to_notion(notion, page_id, image_path):
-    """Uploads an image file to the Notion page's 'Creative' (files) property using Notion's direct upload."""
+def upload_image_to_notion(page_id, image_path, property_name="Creative"):
+    """
+    Uploads an image file to a Notion database page's files property using Notion's direct upload.
+    
+    Args:
+        page_id: The ID of the page in the database
+        image_path: Path to the image file
+        property_name: Name of the files property in the database (default: "Creative")
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
     try:
-        # Step 1: Initiate file upload to get a presigned URL and file ID
-        initiate_upload_endpoint = "https://api.notion.com/v1/file_uploads"
+        # Get file info
+        file_path = Path(image_path)
+        file_name = file_path.name
+        
+        # Determine content type based on file extension
+        content_type_map = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml'
+        }
+        content_type = content_type_map.get(file_path.suffix.lower(), 'image/png')
+        
         headers = {
             "Authorization": f"Bearer {NOTION_API_KEY}",
             "Notion-Version": "2022-06-28",
             "Content-Type": "application/json"
         }
+        
+        # Step 1: Create a File Upload object
+        print("--- Step 1: Creating file upload object ---")
         initiate_payload = {
-            "mode": "single_part"
+            "filename": file_name,
+            "content_type": content_type
         }
         
-        print("--- Initiating Notion file upload ---")
-        initiate_response = requests.post(initiate_upload_endpoint, headers=headers, json=initiate_payload)
+        initiate_response = requests.post(
+            "https://api.notion.com/v1/file_uploads", 
+            headers=headers, 
+            json=initiate_payload
+        )
         initiate_response.raise_for_status()
         initiate_data = initiate_response.json()
         
-        upload_url = initiate_data['upload_url']
-        file_id = initiate_data['id']
+        file_upload_id = initiate_data['id']
+        print(f"File upload ID: {file_upload_id}")
         
-        # Step 2: Upload the actual file to the presigned URL
-        print(f"--- Uploading image to {upload_url} ---")
+        # Step 2: Upload the actual file content using multipart/form-data
+        print("--- Step 2: Uploading file content ---")
         with open(image_path, 'rb') as f:
-            upload_response = requests.put(
-                upload_url, 
-                data=f,
-                headers={"Content-Type": "image/png"}
+            files = {
+                "file": (file_name, f, content_type)
+            }
+            
+            upload_headers = {
+                "Authorization": f"Bearer {NOTION_API_KEY}",
+                "Notion-Version": "2022-06-28"
+                # Note: Don't set Content-Type header - requests will set it automatically for multipart/form-data
+            }
+            
+            upload_response = requests.post(
+                f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send",
+                headers=upload_headers,
+                files=files
             )
             upload_response.raise_for_status()
         
-        print("Image uploaded successfully to Notion's internal storage.")
-
-        # Step 3: Update the Notion page with the internal Notion file ID
-        file_name = os.path.basename(image_path)
-        notion.pages.update(
-            page_id=page_id,
-            properties={
-                "Creative": {
-                    "files": [
-                        {"type": "file", "name": file_name, "file": {"id": file_id}}
-                    ]
+        upload_data = upload_response.json()
+        print(f"Upload status: {upload_data['status']}")
+        
+        # Step 3: Attach the file to the database page's files property
+        print("--- Step 3: Attaching file to page property ---")
+        
+        # First, get the current page to see existing files in the property
+        page_response = requests.get(
+            f"https://api.notion.com/v1/pages/{page_id}",
+            headers=headers
+        )
+        page_response.raise_for_status()
+        page_data = page_response.json()
+        
+        # Get existing files in the property (if any)
+        existing_files = []
+        if property_name in page_data.get('properties', {}):
+            existing_files = page_data['properties'][property_name].get('files', [])
+        
+        # Add the new file to the existing files
+        new_file = {
+            "type": "file_upload",
+            "file_upload": {
+                "id": file_upload_id
+            },
+            "name": file_name
+        }
+        
+        updated_files = existing_files + [new_file]
+        
+        # Update the page with the new file
+        update_payload = {
+            "properties": {
+                property_name: {
+                    "type": "files",
+                    "files": updated_files
                 }
             }
+        }
+        
+        update_response = requests.patch(
+            f"https://api.notion.com/v1/pages/{page_id}",
+            headers=headers,
+            json=update_payload
         )
-        print(f"Updated Notion Creative field with internal file ID: {file_id}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error uploading image to Notion: {e}")
-        if e.response:
-            print(f"Response content: {e.response.text}")
+        update_response.raise_for_status()
+        
+        print("✅ File successfully uploaded and attached to page!")
+        return True
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+        if hasattr(e, 'response') and e.response:
+            print(f"Response: {e.response.text}")
+        return False
     except Exception as e:
-        print(f"An unexpected error occurred during Notion image upload: {e}")
+        print(f"Error uploading file: {e}")
+        return False
 
 def add_idea_to_notion(notion, idea):
     """Adds a single content idea, with AI-generated image, to the Notion database."""
@@ -167,17 +245,26 @@ def add_idea_to_notion(notion, idea):
         page_response = notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
         page_id = page_response['id']
         print(f"Successfully added idea: {idea['title']}")
+        
         # Generate image prompt from keywords or body
         image_prompt = idea.get('body') or idea.get('keywords', '')
-        image_filename = f"{idea['title'].replace(' ', '_').replace('/', '_')}.png"
+        image_filename = f"{idea['title'].replace(' ', '_').replace('/', '_')[:50]}.png"  # Limit filename length
         script_dir = os.path.dirname(__file__)
         images_dir = os.path.join(script_dir, '..', 'generated_images')
         os.makedirs(images_dir, exist_ok=True)
         output_path = os.path.join(images_dir, image_filename)
+        
         local_image_path = generate_image_with_gemini(image_prompt, output_path)
         if local_image_path:
             print(f"Generated image for '{idea['title']}' and saved to '{local_image_path}'.")
-            upload_image_to_notion(notion, page_id, local_image_path)
+            success = upload_image_to_notion(page_id, local_image_path)
+            if success:
+                print(f"✅ Image uploaded to Notion for '{idea['title']}'")
+            else:
+                print(f"❌ Failed to upload image to Notion for '{idea['title']}'")
+        else:
+            print(f"❌ Failed to generate image for '{idea['title']}'")
+            
     except Exception as e:
         print(f"Error adding idea to Notion: {e}")
 

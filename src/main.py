@@ -70,11 +70,27 @@ def main():
     approved_content = get_approved_content()
 
     for item in approved_content:
-        content = item.get("properties").get("Content").get("rich_text")[0].get("text").get("content")
-        page_id = item.get("id")
+        # More robust property access with error handling
+        try:
+            content_property = item.get("properties", {}).get("Content", {}) or item.get("properties", {}).get("Copy", {})
+            
+            if content_property and content_property.get("rich_text"):
+                content = content_property.get("rich_text")[0].get("text", {}).get("content", "")
+            else:
+                print(f"Warning: No content found for page {item.get('id')}")
+                continue
+                
+            page_id = item.get("id")
 
-        post_to_social_media(content)
-        update_notion_status(page_id)
+            if content and page_id:
+                post_to_social_media(content)
+                update_notion_status(page_id)
+            else:
+                print(f"Skipping item due to missing content or page_id")
+                
+        except (IndexError, KeyError, AttributeError) as e:
+            print(f"Error processing item {item.get('id', 'unknown')}: {e}")
+            continue
 
 if __name__ == "__main__":
     main()
