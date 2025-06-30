@@ -5,6 +5,7 @@ import json
 import random
 from datetime import date, timedelta
 import notion_client
+import requests
 from google import genai
 from dotenv import load_dotenv
 
@@ -98,31 +99,58 @@ def generate_image_with_gemini(prompt, output_path):
         return None
 
 def upload_image_to_notion(notion, page_id, image_path):
-    """Uploads an image file to the Notion page's 'Creative' (files) property."""
-    import requests
+    """Uploads an image file to the Notion page's 'Creative' (files) property using Notion's direct upload."""
     try:
-        # Upload the image to an external hosting service (Notion requires a public URL)
-        # For demo: use file.io (auto-deletes after download) or another temp host
+        # Step 1: Get a presigned URL from Notion for the upload
+        get_url_endpoint = f"https://api.notion.com/v1/pages/{page_id}/properties/Creative/files"
+        headers = {
+            "Authorization": f"Bearer {notion.auth}",
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json"
+        }
+        file_info = {
+            "name": os.path.basename(image_path),
+            "type": "image/png" # Assuming PNG, adjust if necessary
+        }
+        
+        print("--- Requesting Notion upload URL ---")
+        response = requests.post(get_url_endpoint, headers=headers, json={"files": [file_info]})
+        response.raise_for_status()
+        upload_data = response.json()
+        
+        presigned_url = upload_data['files'][0]['uploadUrl']
+        notion_file_url = upload_data['files'][0]['url'] # This is the URL Notion will use internally
+        
+        # Step 2: Upload the actual file to the presigned URL
+        print(f"--- Uploading image to {presigned_url} ---")
         with open(image_path, 'rb') as f:
-            resp = requests.post('https://file.io', files={'file': f})
-        file_url = resp.json().get('link')
-        if not file_url:
-            print("Failed to upload image to file.io")
-            return
-        # Update Notion page with the image URL in the 'Creative' field
+            upload_response = requests.put(
+                presigned_url, 
+                data=f,
+                headers={"Content-Type": "image/png"}
+            )
+            upload_response.raise_for_status()
+        
+        print("Image uploaded successfully to Notion's internal storage.")
+
+        # Step 3: Update the Notion page with the internal Notion file URL
         notion.pages.update(
             page_id=page_id,
             properties={
                 "Creative": {
                     "files": [
-                        {"type": "external", "name": os.path.basename(image_path), "external": {"url": file_url}}
+                        {"type": "file", "name": os.path.basename(image_path), "file": {"url": notion_file_url}}
                     ]
                 }
             }
         )
-        print(f"Uploaded image to Notion Creative field: {file_url}")
-    except Exception as e:
+        print(f"Updated Notion Creative field with internal URL: {notion_file_url}")
+    except requests.exceptions.RequestException as e:
         print(f"Error uploading image to Notion: {e}")
+        if e.response:
+            print(f"Response content: {e.response.text}")
+    except Exception as e:
+        print(f"An unexpected error occurred during Notion image upload: {e}")
 
 def add_idea_to_notion(notion, idea):
     """Adds a single content idea, with AI-generated image, to the Notion database."""
