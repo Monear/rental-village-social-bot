@@ -3,6 +3,9 @@ import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from src.utils import notion_helpers
 
+# Set GEMINI_API_KEY for all tests
+os.environ["GEMINI_API_KEY"] = "fake-key"
+
 # Patch environment variables for Notion
 NOTION_API_KEY = "fake-notion-key"
 NOTION_DATABASE_ID = "fake-db-id"
@@ -49,11 +52,14 @@ def test_add_idea_to_notion_success():
     fake_page = {"id": "pageid"}
     notion = MagicMock()
     notion.pages.create.return_value = fake_page
-    # Patch image generation and upload
-    with patch("utils.notion_helpers.generate_image_with_gemini", return_value="img.png"), \
-         patch("utils.notion_helpers.upload_image_to_notion", return_value=True):
-        notion_helpers.add_idea_to_notion(notion, fake_idea, notion_helpers.generate_image_with_gemini)
+    mock_generate_image = MagicMock(return_value="img.png")
+    mock_upload_image = MagicMock(return_value=True)
+    # Patch upload_image_to_notion in notion_helpers
+    with patch.object(notion_helpers, "upload_image_to_notion", mock_upload_image):
+        notion_helpers.add_idea_to_notion(notion, fake_idea, mock_generate_image)
         notion.pages.create.assert_called_once()
+        mock_generate_image.assert_called_once()
+        mock_upload_image.assert_called_once()
 
 def test_add_idea_to_notion_image_fail():
     fake_idea = {
@@ -64,9 +70,11 @@ def test_add_idea_to_notion_image_fail():
     fake_page = {"id": "pageid"}
     notion = MagicMock()
     notion.pages.create.return_value = fake_page
-    with patch("utils.notion_helpers.generate_image_with_gemini", return_value=None):
-        notion_helpers.add_idea_to_notion(notion, fake_idea, notion_helpers.generate_image_with_gemini)
+    mock_generate_image = MagicMock(return_value=None)
+    with patch.object(notion_helpers, "upload_image_to_notion", MagicMock()):
+        notion_helpers.add_idea_to_notion(notion, fake_idea, mock_generate_image)
         notion.pages.create.assert_called_once()
+        mock_generate_image.assert_called_once()
 
 def test_add_idea_to_notion_exception():
     fake_idea = {
@@ -76,4 +84,6 @@ def test_add_idea_to_notion_exception():
     }
     notion = MagicMock()
     notion.pages.create.side_effect = Exception("fail")
-    notion_helpers.add_idea_to_notion(notion, fake_idea, notion_helpers.generate_image_with_gemini)
+    mock_generate_image = MagicMock()
+    with patch.object(notion_helpers, "upload_image_to_notion", MagicMock()):
+        notion_helpers.add_idea_to_notion(notion, fake_idea, mock_generate_image)
