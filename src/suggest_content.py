@@ -44,7 +44,7 @@ def main():
 
     print("\nStarting to add new content ideas to Notion...")
     for idea in ideas:
-        add_idea_to_notion(notion, idea, generate_image_with_gemini)
+        add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3)
     print("Finished adding ideas.")
 
 if __name__ == "__main__":
