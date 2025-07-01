@@ -4,8 +4,9 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Optional
-# Use absolute import for package/module best practice
-from src.utils.openai_helpers import call_openai_api, OpenAIRateLimitError
+import os
+# Use relative import when running from within the utils directory
+from openai_helpers import call_openai_api, OpenAIRateLimitError
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -258,8 +259,12 @@ def enhance_rental_catalog(catalog_path: str, output_path: str, config: Enhancem
     import sys
     if config is None:
         config = EnhancementConfig()
+    # Resolve catalog_path and output_path relative to this script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    catalog_path_abs = catalog_path if os.path.isabs(catalog_path) else os.path.normpath(os.path.join(script_dir, '..', '..', catalog_path))
+    output_path_abs = output_path if os.path.isabs(output_path) else os.path.normpath(os.path.join(script_dir, '..', '..', output_path))
     # Load existing catalog
-    with open(catalog_path, 'r') as f:
+    with open(catalog_path_abs, 'r') as f:
         catalog_data = json.load(f)
     enhancer = AIProductEnhancer(config)
     products = catalog_data.get('product_catalog', [])
@@ -310,7 +315,7 @@ def enhance_rental_catalog(catalog_path: str, output_path: str, config: Enhancem
         'safety_note': 'AI enhancements are suggestions only. Technical specifications and safety information remain unchanged.'
     }
     # Write the enhanced data to the output file
-    with open(output_path, 'w') as f:
+    with open(output_path_abs, 'w') as f:
         json.dump(complete_catalog, f, indent=2)
     print(f"\n✅ Enhancement complete! Processed: {len(processed_products)} products. Errors: {error_count}.")
     logger.info(f"📊 Enhanced {len(processed_products)} products")
