@@ -31,6 +31,12 @@ def main():
     if not content_guidelines:
         return
 
+    social_media_best_practices_path = os.path.join(script_dir, 'prompts', 'social_media_best_practices.md')
+    social_media_best_practices = read_file_content(social_media_best_practices_path)
+    if not social_media_best_practices:
+        print("Warning: Social media best practices document not found. Proceeding without this context.")
+        social_media_best_practices = ""
+
     # Load Machine Context Provider (MCP)
     mcp_path = os.path.join(script_dir, 'data', 'machine_context.json')
     try:
@@ -49,7 +55,7 @@ def main():
     existing_ideas = get_existing_notion_ideas(notion, NOTION_DATABASE_ID)
     print(f"Found {len(existing_ideas)} existing ideas.")
 
-    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text, existing_ideas, machine_context)
+    ideas = generate_ideas_with_gemini(content_guidelines, args.num_ideas, args.input_text, existing_ideas, machine_context, social_media_best_practices)
 
     if not ideas:
         print("No ideas were generated. Exiting.")

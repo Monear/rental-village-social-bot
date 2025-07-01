@@ -8,12 +8,14 @@ from dotenv import load_dotenv
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None, machine_context=None):
+def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None, machine_context=None, social_media_best_practices=None):
     """Generates content ideas using the Gemini API (new google-genai SDK)."""
     if existing_ideas is None:
         existing_ideas = []
     if machine_context is None:
         machine_context = {}
+    if social_media_best_practices is None:
+        social_media_best_practices = ""
 
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY must be set in the .env file.")
@@ -33,6 +35,14 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
         ---
         Business and Machine Context:
         {json.dumps(machine_context, indent=2)}
+        ---
+        """
+
+    if social_media_best_practices:
+        prompt += f"""
+        Adhere strictly to the following Social Media Best Practices and Strategic Guidelines:
+        ---
+        {social_media_best_practices}
         ---
         """
 
