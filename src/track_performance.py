@@ -3,6 +3,7 @@ import os
 from datetime import date, timedelta
 import notion_client
 from dotenv import load_dotenv
+import random
 
 # Load environment variables from .env file
 load_dotenv()

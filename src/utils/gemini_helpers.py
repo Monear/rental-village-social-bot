@@ -4,9 +4,14 @@ import os
 import json
 from google import genai
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+class GeminiRateLimitError(Exception):
+    """Custom exception for Gemini API rate limiting."""
+    pass
 
 def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_ideas=None, machine_context=None, social_media_best_practices=None):
     """Generates content ideas using the Gemini API (new google-genai SDK)."""
@@ -89,6 +94,28 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
         if 'response' in locals():
             print(f"Raw response from API: {getattr(response, 'text', '')}")
         return []
+
+def call_gemini_api(prompt: str) -> Optional[str]:
+    """Makes a generic call to the Gemini API and returns the raw text response."""
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY must be set in the .env file.")
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    try:
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt
+        )
+        if response and response.candidates and response.candidates[0].content.parts:
+            return response.candidates[0].content.parts[0].text.strip()
+        return None
+    except Exception as e:
+        # Check for 429/resource exhausted in error message
+        if (hasattr(e, 'args') and any('RESOURCE_EXHAUSTED' in str(arg) or '429' in str(arg) for arg in e.args)) or 'RESOURCE_EXHAUSTED' in str(e) or '429' in str(e):
+            # Suppress all output for rate limits
+            raise GeminiRateLimitError(str(e))
+        # Suppress all output for other errors
+        return None
 
 def generate_image_with_gemini(prompt, output_path, num_images=3, instructions_path=None):
     """Generates up to num_images using Gemini (text-to-image) and saves them. Returns a list of file paths.
