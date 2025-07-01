@@ -31,10 +31,10 @@ def test_generate_ideas_with_gemini_success(mock_gemini_client):
     mock_gemini_client.models.generate_content.assert_called_once()
 
 def test_generate_ideas_with_gemini_no_api_key():
-    # Fix: Directly mock os.getenv to control GEMINI_API_KEY
+    # Fix: Directly patch os.getenv to control GEMINI_API_KEY
     with patch('os.getenv', return_value=None) as mock_getenv:
         mock_getenv.side_effect = lambda key, default=None: None if key == "GEMINI_API_KEY" else os.environ.get(key, default)
-        with pytest.raises(ValueError, match="GEMINI_API_KEY must be set"): 
+        with pytest.raises(ValueError, match="GEMINI_API_KEY must be set"):
             generate_ideas_with_gemini("guidelines", 1)
 
 def test_generate_ideas_with_gemini_api_error(mock_gemini_client):
