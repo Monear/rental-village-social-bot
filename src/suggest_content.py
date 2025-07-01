@@ -2,9 +2,9 @@
 import os
 import argparse
 from dotenv import load_dotenv
-from utils.general import read_file_content
-from utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini
-from utils.notion_helpers import add_idea_to_notion, get_existing_notion_ideas
+from src.utils.general import read_file_content
+from src.utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini
+from src.utils.notion_helpers import add_idea_to_notion, get_existing_notion_ideas
 import notion_client
 import json
 

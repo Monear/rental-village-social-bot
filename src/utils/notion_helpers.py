@@ -6,7 +6,7 @@ import requests
 from datetime import date, timedelta
 import random
 from dotenv import load_dotenv
-from utils.general import read_file_content
+from src.utils.general import read_file_content
 
 load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")

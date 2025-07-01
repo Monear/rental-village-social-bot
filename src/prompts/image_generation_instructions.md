@@ -22,4 +22,4 @@ Generate 2-3 high-quality, photorealistic DIY images that look like genuine, uns
 - A portrait of a person using [tool] in a [setting], smiling, natural expression, soft daylight, professional, 35mm lens.
 
 ## Output
-For each variation, generate an image that visually represents the provided content description or keywords. Focus on realism, clarity, and the primary subject. Each image should be ready for use as a brand social post or as creative inspiration. Use the above framework to maximize authenticity and visual impact.
+For each variation, generate an image that visually represents the provided content description or keywords. Focus on realism, clarity, and the primary subject. Each image should be ready for use as a brand social post or as creative inspiration. Use the above framework to maximize authenticity and visual impact!
