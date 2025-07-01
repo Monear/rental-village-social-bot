@@ -59,9 +59,9 @@ def test_generate_image_with_gemini_success(mock_gemini_client, tmp_path):
         candidates=[MagicMock(content=MagicMock(parts=[MagicMock(inline_data=MagicMock(data=b'fake_image_data'))]))]
     )
     output_file = tmp_path / "output.png"
-    with patch('PIL.Image.open') as mock_image_open,
-         patch('os.makedirs'),
-         patch('builtins.open', MagicMock()): # Mock open for saving image
+    with patch('PIL.Image.open') as mock_image_open:
+        with patch('os.makedirs'):
+            with patch('builtins.open', MagicMock()): # Mock open for saving image
         mock_image_instance = MagicMock()
         mock_image_open.return_value = mock_image_instance
 

@@ -67,7 +67,7 @@ def test_create_markdown_report_no_posts():
 # Test save_report_to_file
 def test_save_report_to_file_success():
     mock_content = "# Test Report"
-    mock_file_path = os.path.join("strategy_documents", f"monthly_report_{date.today().strftime("%Y-%m")}.md")
+    mock_file_path = os.path.join("strategy_documents", f"monthly_report_{date.today().strftime('%Y-%m')}.md")
     with patch('builtins.open', mock_open()) as mocked_file_open,
          patch('builtins.print') as mock_print:
         save_report_to_file(mock_content)

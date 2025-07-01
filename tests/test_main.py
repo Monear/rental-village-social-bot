@@ -69,9 +69,9 @@ def test_main_success(mock_notion_client):
             {"id": "page1", "properties": {"Copy": {"rich_text": [{"text": {"content": "Content 1"}}]}}}
         ]
     }
-    with patch('src.main.post_to_social_media') as mock_post_social_media,
-         patch('src.main.update_notion_status') as mock_update_notion_status,
-         patch('builtins.print') as mock_print:
+    with patch('src.main.post_to_social_media') as mock_post_social_media:
+        with patch('src.main.update_notion_status') as mock_update_notion_status:
+            with patch('builtins.print') as mock_print:
         main()
         mock_post_social_media.assert_called_once_with("Content 1")
         mock_update_notion_status.assert_called_once_with("page1")

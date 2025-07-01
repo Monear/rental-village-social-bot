@@ -81,9 +81,9 @@ def test_main_success(mock_notion_client):
             {"id": "page1", "properties": {"Platform": {"select": {"name": "Facebook"}}, "Post ID": {"rich_text": [{"text": {"content": "fb_post_1"}}]}}}
         ]
     }
-    with patch('src.track_performance.get_performance_metrics') as mock_get_metrics,
-         patch('src.track_performance.update_notion_with_metrics') as mock_update_notion,
-         patch('builtins.print') as mock_print:
+    with patch('src.track_performance.get_performance_metrics') as mock_get_metrics:
+        with patch('src.track_performance.update_notion_with_metrics') as mock_update_notion:
+            with patch('builtins.print') as mock_print:
         mock_get_metrics.return_value = {"likes": 50, "comments": 5, "reach": 500}
         main()
         mock_get_metrics.assert_called_once_with("fb_post_1", "Facebook")

@@ -39,8 +39,8 @@ def mock_notion_client():
 # Mock Gemini API interactions
 @pytest.fixture
 def mock_gemini_helpers():
-    with patch('src.utils.gemini_helpers.generate_ideas_with_gemini') as mock_ideas,
-         patch('src.utils.gemini_helpers.generate_image_with_gemini') as mock_images:
+    with patch('src.utils.gemini_helpers.generate_ideas_with_gemini') as mock_ideas:
+        with patch('src.utils.gemini_helpers.generate_image_with_gemini') as mock_images:
         mock_ideas.return_value = [
             {
                 "pillar": "Tool Spotlight",

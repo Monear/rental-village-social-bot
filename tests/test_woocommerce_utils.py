@@ -67,9 +67,9 @@ def mock_wcapi_auth_error():
 # Tests for fetch_woocommerce_data
 def test_fetch_woocommerce_data_success(mock_wcapi_success):
     mock_output_path = "src/data/machine_context.json"
-    with patch('builtins.open', mock_open()) as mocked_file_open,
-         patch('json.dump') as mocked_json_dump,
-         patch('builtins.print') as mocked_print:
+    with patch('builtins.open', mock_open()) as mocked_file_open:
+        with patch('json.dump') as mocked_json_dump:
+            with patch('builtins.print') as mocked_print:
         
         fetch_woocommerce_data()
         
