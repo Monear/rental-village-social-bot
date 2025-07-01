@@ -62,7 +62,7 @@ def test_generate_image_with_gemini_success(mock_gemini_client, tmp_path):
     with patch('PIL.Image.open') as mock_image_open:
         with patch('os.makedirs'):
             with patch('builtins.open', MagicMock()): # Mock open for saving image
-        mock_image_instance = MagicMock()
+                mock_image_instance = MagicMock()
         mock_image_open.return_value = mock_image_instance
 
         # Fix: Pass num_images=1 explicitly to match the test's expectation

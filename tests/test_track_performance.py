@@ -84,7 +84,7 @@ def test_main_success(mock_notion_client):
     with patch('src.track_performance.get_performance_metrics') as mock_get_metrics:
         with patch('src.track_performance.update_notion_with_metrics') as mock_update_notion:
             with patch('builtins.print') as mock_print:
-        mock_get_metrics.return_value = {"likes": 50, "comments": 5, "reach": 500}
+                mock_get_metrics.return_value = {"likes": 50, "comments": 5, "reach": 500}
         main()
         mock_get_metrics.assert_called_once_with("fb_post_1", "Facebook")
         mock_update_notion.assert_called_once_with(mock_notion_client.return_value, "page1", {"likes": 50, "comments": 5, "reach": 500})

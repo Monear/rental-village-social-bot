@@ -70,8 +70,7 @@ def test_fetch_woocommerce_data_success(mock_wcapi_success):
     with patch('builtins.open', mock_open()) as mocked_file_open:
         with patch('json.dump') as mocked_json_dump:
             with patch('builtins.print') as mocked_print:
-        
-        fetch_woocommerce_data()
+                fetch_woocommerce_data()
         
         mocked_file_open.assert_called_once_with(mock_output_path, 'w')
         mocked_json_dump.assert_called_once()

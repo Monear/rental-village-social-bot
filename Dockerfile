@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application's code into the container
 COPY src/ ./src
-COPY strategy_documents/ ./strategy_documents
 COPY tests/ ./tests
 COPY src/data/ ./src/data
 
