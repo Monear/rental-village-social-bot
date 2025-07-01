@@ -34,3 +34,13 @@ podman run --rm --env-file .env rental-village-bot python src/suggest_content.py
 ```
 
 Remember to replace `src/suggest_content.py --num-ideas 2` with the specific script and its arguments you wish to execute.
+
+## 4. Running Tests
+
+To run the comprehensive test suite within the container, first ensure your image is built with the latest code and dependencies. Then, execute:
+
+```bash
+podman run --rm rental-village-bot pytest
+```
+
+This command will run all tests located in the `tests/` directory inside the `rental-village-bot` container.
