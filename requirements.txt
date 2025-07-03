@@ -1,9 +1,5 @@
+git+https://github.com/OmniPro-Group/sanity-python.git
+google-genai
 notion-client
-requests
 python-dotenv
-google-genai>=0.1.0
 pillow
-pytest
-WooCommerce
-openai>=1.0.0
-httpx==0.27.2

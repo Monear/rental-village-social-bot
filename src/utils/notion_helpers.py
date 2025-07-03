@@ -8,9 +8,9 @@ import random
 from dotenv import load_dotenv
 from src.utils.general import read_file_content
 
-load_dotenv()
-NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+load_dotenv(override=True)
+NOTION_API_KEY = os.getenv("NOTION_TOKEN")
+NOTION_DATABASE_ID = os.getenv("DATABASE_ID")
 
 def upload_image_to_notion(page_id, image_path, property_name="Creative"):
     """
@@ -138,7 +138,7 @@ def add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3):
     suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
     properties = {
         "Name": {"title": [{"text": {"content": idea['title']}}]},
-        "Status": {"status": {"name": "AI Suggestion"}},
+        "Status": {"status": {"name": "Suggestion"}},
         "Content Pillar": {"select": {"name": idea['pillar']}},
         "Post Date": {"date": {"start": suggested_date}},
         "Copy": {"rich_text": [{"type": "text", "text": {"content": idea['body']}}]}

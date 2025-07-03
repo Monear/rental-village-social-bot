@@ -1,0 +1,23 @@
+# Use an official Node.js runtime as a parent image
+FROM node:20-slim
+
+# Set the working directory in the container
+WORKDIR /app/sanity-studio/rental-village
+
+# Copy package.json and package-lock.json (if available) to leverage Docker's cache
+COPY sanity-studio/rental-village/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the Sanity Studio files
+COPY sanity-studio/rental-village/ ./
+
+# Build the Sanity Studio for production
+RUN npm run build
+
+# Expose the port Sanity Studio runs on (default is 3333)
+EXPOSE 3333
+
+# Command to run the Sanity Studio in production mode
+CMD ["npm", "run", "start"]

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  sanity-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.studio
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./sanity-studio/rental-village:/app/sanity-studio/rental-village
+    environment:
+      # Sanity Studio environment variables (if any, typically handled by .env in the studio dir)
+      SANITY_STUDIO_PROJECT_ID: ${SANITY_PROJECT_ID}
+      SANITY_STUDIO_DATASET: ${SANITY_DATASET}
+    # This command is for development. For production, you might use `npm run start`
+    command: npm run dev
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    ports:
+      - "8000:8000"
+    environment:
+      SANITY_PROJECT_ID: ${SANITY_PROJECT_ID}
+      SANITY_DATASET: ${SANITY_DATASET}
+      SANITY_API_TOKEN: ${SANITY_API_TOKEN}
+    depends_on:
+      - sanity-studio # MCP server depends on Sanity Studio being available (for data)
+
+  content-generation:
+    build:
+      context: .
+      dockerfile: Dockerfile.content
+    environment:
+      NOTION_API_KEY: ${NOTION_API_KEY}
+      NOTION_DATABASE_ID: ${NOTION_DATABASE_ID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SANITY_PROJECT_ID: ${SANITY_PROJECT_ID}
+      SANITY_DATASET: ${SANITY_DATASET}
+      SANITY_API_TOKEN: ${SANITY_API_TOKEN}
+    depends_on:
+      - mcp-server # Content generation depends on MCP server (for data access)
+    # This service is typically run manually for specific tasks, not as a long-running service
+    # command: python src/suggest_content.py --num-ideas 1 # Example of how to run a task

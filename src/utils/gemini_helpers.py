@@ -126,6 +126,7 @@ def generate_image_with_gemini(prompt, output_path, num_images=3, instructions_p
         from io import BytesIO
         import sys
         client = genai.Client(api_key=GEMINI_API_KEY)
+        
         image_paths = []
         # Load instructions from .md file if provided
         instructions = None
@@ -135,18 +136,24 @@ def generate_image_with_gemini(prompt, output_path, num_images=3, instructions_p
                     instructions = f.read().strip()
             except Exception as e:
                 print(f"Warning: Could not read image generation instructions: {e}", file=sys.stderr)
+        
         for i in range(num_images):
             full_prompt = ""
             if instructions:
                 full_prompt += instructions + "\n\n"
             full_prompt += f"{prompt}\nVariation {i+1} of {num_images}."
+            
+            # Use the image generation model
             response = client.models.generate_content(
-                model="gemini-2.0-flash-preview-image-generation",
+                model="gemini-2.0-flash-exp",
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
                     response_modalities=['TEXT', 'IMAGE']
                 )
             )
+            
+            # Note: Image generation may not be available in all regions or models
+            # This is a placeholder implementation that may need adjustment
             found_image = False
             for part in response.candidates[0].content.parts:
                 if hasattr(part, 'inline_data') and part.inline_data is not None:

@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src
 COPY tests/ ./tests
 COPY src/data/ ./src/data
+COPY src/prompts/ ./src/prompts
+
+# Copy Sanity Studio related files
+COPY sanity-studio/ ./sanity-studio/
 
 # This container will run scripts on-demand.
 # The command will be provided when we run the container.
