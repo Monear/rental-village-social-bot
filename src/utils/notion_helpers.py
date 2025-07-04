@@ -168,10 +168,35 @@ def add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3):
     try:
         page_response = notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
         page_id = page_response['id']
-        # Read image generation instructions
-        script_dir = os.path.dirname(__file__)
-        image_instructions_path = os.path.join(script_dir, '..', 'prompts', 'image_generation_instructions.md')
-        image_instructions = read_file_content(image_instructions_path)
+        # Read image generation instructions from Sanity
+        from sanity import Client
+        import logging
+        
+        # Initialize Sanity client
+        SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID", "2pxuaj9k")
+        SANITY_DATASET = os.environ.get("SANITY_DATASET", "production")
+        SANITY_API_TOKEN = os.environ.get("SANITY_API_TOKEN")
+        
+        sanity_client = Client(
+            project_id=SANITY_PROJECT_ID,
+            dataset=SANITY_DATASET,
+            token=SANITY_API_TOKEN,
+            use_cdn=True,
+            logger=logging.getLogger(__name__)
+        )
+        
+        try:
+            query_result = sanity_client.query(
+                '*[_type == "contentPrompt" && title == "Image Generation Instructions"][0]'
+            )
+            image_instructions_doc = query_result.get('result')
+            image_instructions = image_instructions_doc.get('content') if image_instructions_doc else ""
+            if not image_instructions:
+                print("Warning: Image generation instructions not found in Sanity. Using basic prompt.")
+                image_instructions = "Generate a professional, high-quality image that represents the equipment rental content."
+        except Exception as e:
+            print(f"Warning: Error fetching image instructions from Sanity: {e}. Using basic prompt.")
+            image_instructions = "Generate a professional, high-quality image that represents the equipment rental content."
         title_context = idea.get('title', '')
         body_context = idea.get('body', '')
         keywords_context = idea.get('keywords', '')
