@@ -3,10 +3,10 @@
 import os
 import time
 import logging
-from sanity.client import Client
+from sanity import Client
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path='/Users/tyler/Documents/rental_village/social_media/.env')
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

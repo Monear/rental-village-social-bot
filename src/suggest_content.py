@@ -8,16 +8,18 @@ from dotenv import load_dotenv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.utils.general import read_file_content
-from src.utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini
+from src.utils.gemini_helpers import generate_ideas_with_gemini, generate_image_with_gemini, generate_enhanced_image_with_real_equipment
 from src.utils.notion_helpers import add_idea_to_notion, get_existing_notion_ideas
 from src.utils.sanity_helpers import save_social_content_to_sanity
+from src.utils.safety_validator import validate_idea_safety
 import notion_client
 import json
 import logging
-from sanity.client import Client
+from sanity import Client
+import requests
 
 # Load environment variables
-load_dotenv(dotenv_path='/Users/tyler/Documents/rental_village/social_media/.env', override=True)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -105,15 +107,214 @@ def main():
 
     print("\nStarting to process new content ideas...")
     for idea in ideas:
-        sanity_doc_id = save_social_content_to_sanity(idea)
+        # SAFETY VALIDATION FIRST
+        is_safe, safety_issues, safe_alternative = validate_idea_safety(idea)
+        
+        if not is_safe:
+            print(f"🚨 SAFETY ISSUE DETECTED for '{idea.get('title', 'Unknown')}':")
+            for issue in safety_issues:
+                print(f"   ❌ {issue}")
+            print(f"   ✅ Safe alternative: {safe_alternative[:100]}...")
+            
+            # Replace unsafe content with safe alternative
+            idea['body'] = safe_alternative
+            idea['title'] = f"SAFE: {idea.get('title', 'Equipment Rental')}"
+            print("   🔒 Content replaced with safety-validated version")
+        
+        # Enhance idea with content pillar classification and smart equipment linking
+        enhanced_idea = enhance_idea_quality(idea, business_context)
+        
+        # Use real equipment images instead of generating new ones
+        equipment_images = []
+        related_equipment = enhanced_idea.get('related_equipment', [])
+        for equipment in related_equipment[:3]:  # Max 3 images
+            primary_image = equipment.get('primaryImage')
+            if primary_image and primary_image.get('url'):
+                equipment_images.append({
+                    'url': primary_image['url'],
+                    'alt_text': primary_image.get('alt_text', f"Image of {equipment.get('name', 'equipment')}"),
+                    'caption': f"{equipment.get('name', 'Equipment')} - {equipment.get('short_description', '')}"
+                })
+        
+        if equipment_images:
+            enhanced_idea['equipment_images'] = equipment_images
+            print(f"📸 Using {len(equipment_images)} real equipment photos")
+        
+        sanity_doc_id = save_social_content_to_sanity(enhanced_idea)
         if sanity_doc_id:
             print(f"Idea saved to Sanity with ID: {sanity_doc_id}")
-            # Optionally, you could pass the Sanity doc ID to Notion for linking
-            # For now, we proceed with Notion sync as before
-            add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3)
+            print(f"Content Pillar: {enhanced_idea.get('content_pillar', 'general_content')}")
+            print(f"Equipment Count: {len(enhanced_idea.get('related_equipment', []))}")
+            # Add Sanity doc ID to the idea for Notion linking
+            enhanced_idea['sanity_doc_id'] = sanity_doc_id
+            add_idea_to_notion(notion, enhanced_idea, generate_image_with_gemini, num_images=3)
         else:
-            print(f"Failed to save idea to Sanity. Skipping Notion sync for this idea: {idea.get('title', 'Unknown Title')}")
+            print(f"Failed to save idea to Sanity. Skipping Notion sync for this idea: {enhanced_idea.get('title', 'Unknown Title')}")
     print("Finished processing ideas.")
+
+def classify_content_pillar(idea: dict) -> str:
+    """Classify content into specific pillars based on content analysis."""
+    title = idea.get('title', '').lower()
+    body = idea.get('body', '').lower()
+    keywords = idea.get('keywords', '').lower()
+    
+    combined_text = f"{title} {body} {keywords}"
+    
+    # Content pillar classification logic
+    if any(word in combined_text for word in ['spotlight', 'feature', 'introducing', 'new equipment', 'specs', 'capabilities']):
+        return 'equipment_spotlight'
+    elif any(word in combined_text for word in ['project', 'showcase', 'customer', 'case study', 'success story']):
+        return 'project_showcase'
+    elif any(word in combined_text for word in ['construction', 'landscaping', 'agriculture', 'industry', 'commercial']):
+        return 'industry_focus'
+    elif any(word in combined_text for word in ['winter', 'summer', 'spring', 'fall', 'seasonal', 'weather']):
+        return 'seasonal_content'
+    elif any(word in combined_text for word in ['safety', 'training', 'certification', 'operator', 'ppe']):
+        return 'safety_training'
+    elif any(word in combined_text for word in ['maintenance', 'care', 'service', 'repair', 'troubleshoot']):
+        return 'maintenance_tips'
+    elif any(word in combined_text for word in ['testimonial', 'review', 'before after', 'transformation']):
+        return 'customer_success'
+    elif any(word in combined_text for word in ['how to', 'guide', 'tips', 'comparison', 'choose']):
+        return 'educational_content'
+    else:
+        return 'general_content'
+
+def get_equipment_by_pillar(pillar: str, idea: dict) -> list:
+    """Fetch relevant equipment based on content pillar using optimized GROQ queries."""
+    try:
+        title = idea.get('title', '').lower()
+        body = idea.get('body', '').lower()
+        keywords = idea.get('keywords', '').lower()
+        
+        if pillar == 'equipment_spotlight':
+            # Get equipment with rich media and specifications
+            query = '''
+                *[_type == "equipment" && defined(images)] [0...3] {
+                  _id, name, brand, model, short_description, full_description,
+                  "primaryImage": images[is_primary == true][0],
+                  "firstVideo": video_urls[0], 
+                  primary_use_cases, 
+                  "dailyRate": pricing.daily_rate,
+                  keywords, 
+                  "topSpecs": specifications[0...3]
+                }
+            '''
+            
+        elif pillar == 'project_showcase':
+            # Get equipment for multi-equipment projects (simplified)
+            query = '''
+                *[_type == "equipment"] [0...4] {
+                  _id, name, brand, short_description, 
+                  "primaryImage": images[is_primary == true][0],
+                  primary_use_cases, 
+                  "dailyRate": pricing.daily_rate
+                }
+            '''
+            
+        elif pillar == 'industry_focus':
+            # Extract industry from content
+            industry = 'construction'  # Default
+            if 'landscaping' in f"{title} {body} {keywords}":
+                industry = 'landscaping'
+            elif 'agriculture' in f"{title} {body} {keywords}":
+                industry = 'agriculture'
+            
+            query = f'*[_type == "equipment" && "{industry}" in industries_served[]] [0...3] ' + '''{
+                  _id, name, brand, model, short_description, full_description,
+                  "primaryImage": images[is_primary == true][0],
+                  primary_use_cases, 
+                  "dailyRate": pricing.daily_rate,
+                  industries_served, project_types,
+                  "topSafetyReqs": safety.safety_requirements[0...2]
+                }'''
+            
+        elif pillar == 'seasonal_content':
+            # Get weather-appropriate equipment
+            season = 'winter' if any(word in f"{title} {body} {keywords}" for word in ['winter', 'snow', 'cold']) else 'summer'
+            
+            query = f'*[_type == "equipment" && ("{season}" in keywords[] || "outdoor" in primary_use_cases[] || "all-season" in keywords[])] [0...3] ' + '''{
+                  _id, name, brand, short_description,
+                  "primaryImage": images[is_primary == true][0],
+                  "weatherSpecs": specifications[name match "*temperature*" || name match "*weather*"],
+                  primary_use_cases, 
+                  "protectiveEquipment": safety.protective_equipment_required
+                }'''
+            
+        elif pillar == 'safety_training':
+            # Get equipment with safety requirements
+            query = '''
+                *[_type == "equipment" && 
+                  (safety.operator_certification_required == true || 
+                   count(safety.safety_requirements) > 0)] [0...3] {
+                  _id, name, brand, short_description,
+                  "primaryImage": images[is_primary == true][0],
+                  "safetyRequirements": safety.safety_requirements, 
+                  "certificationRequired": safety.operator_certification_required,
+                  "protectiveEquipment": safety.protective_equipment_required, 
+                  manual_urls
+                }
+            '''
+            
+        else:
+            # Default query for general content
+            query = '''
+                *[_type == "equipment"] [0...2] {
+                  _id, name, brand, short_description,
+                  "primaryImage": images[is_primary == true][0],
+                  primary_use_cases, 
+                  "dailyRate": pricing.daily_rate
+                }
+            '''
+        
+        # Execute GROQ query
+        result = sanity_client.query(query)
+        equipment_data = result.get('result', [])
+        
+        return equipment_data
+        
+    except Exception as e:
+        logger.error(f"Error fetching equipment for pillar {pillar}: {e}")
+        return []
+
+def enhance_idea_quality(idea: dict, business_context: dict) -> dict:
+    """Enhance the generated idea with content pillar classification and smart equipment linking."""
+    enhanced = idea.copy()
+    
+    # Classify content pillar
+    pillar = classify_content_pillar(idea)
+    enhanced['content_pillar'] = pillar
+    
+    # Determine platform based on content characteristics
+    body = idea.get('body', '').lower()
+    if any(word in body for word in ['video', 'watch', 'check out this']):
+        enhanced['platform'] = 'Instagram/TikTok'
+    elif any(word in body for word in ['#', 'hashtag', 'follow']):
+        enhanced['platform'] = 'Instagram'
+    elif len(body) > 200:
+        enhanced['platform'] = 'Facebook'
+    else:
+        enhanced['platform'] = 'Multi-platform'
+    
+    # Get relevant equipment using pillar-specific queries
+    equipment_data = get_equipment_by_pillar(pillar, idea)
+    enhanced['related_equipment'] = equipment_data
+    
+    # Add equipment insights for content generation
+    if equipment_data:
+        enhanced['equipment_insights'] = {
+            'total_equipment': len(equipment_data),
+            'featured_equipment': equipment_data[0].get('name', '') if equipment_data else '',
+            'price_range': {
+                'min': min([eq.get('pricing', {}).get('daily_rate', 0) for eq in equipment_data if eq.get('pricing', {}).get('daily_rate')], default=0),
+                'max': max([eq.get('pricing', {}).get('daily_rate', 0) for eq in equipment_data if eq.get('pricing', {}).get('daily_rate')], default=0)
+            } if any(eq.get('pricing', {}).get('daily_rate') for eq in equipment_data) else None,
+            'safety_required': any(eq.get('safety', {}).get('operator_certification_required') for eq in equipment_data),
+            'industries': list(set([industry for eq in equipment_data for industry in eq.get('industries_served', [])]))
+        }
+    
+    return enhanced
+
 
 if __name__ == "__main__":
     main()

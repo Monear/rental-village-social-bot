@@ -5,7 +5,7 @@ from mcp.tool import Tool
 from mcp.prompt import Prompt
 import os
 import logging
-from sanity.client import Client
+from sanity import Client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

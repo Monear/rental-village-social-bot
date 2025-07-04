@@ -11,7 +11,7 @@
 # These functions would encapsulate GROQ query logic, making it reusable and easier to manage.
 
 # Example structure:
-# from sanity.client import Client
+# from sanity import Client
 # import os
 
 # SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID")

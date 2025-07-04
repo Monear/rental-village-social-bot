@@ -169,3 +169,76 @@ def generate_image_with_gemini(prompt, output_path, num_images=3, instructions_p
     except Exception as e:
         print(f"Error generating image with Gemini: {e}")
         return None
+
+def generate_enhanced_image_with_real_equipment(equipment_data: list, content_pillar: str, content_title: str) -> str:
+    """Generate enhanced images using Gemini with real product images from equipment data."""
+    try:
+        if not equipment_data:
+            return None
+            
+        # Get the primary equipment image
+        primary_equipment = equipment_data[0]
+        primary_image = primary_equipment.get('primaryImage', {})
+        image_url = primary_image.get('url') if primary_image else None
+        
+        if not image_url:
+            return None
+            
+        # Download the image
+        import requests
+        from PIL import Image
+        from io import BytesIO
+        
+        response = requests.get(image_url)
+        if response.status_code != 200:
+            return None
+            
+        # Load image with PIL
+        image = Image.open(BytesIO(response.content))
+        
+        # Initialize Gemini client
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Create enhancement prompt based on content pillar
+        enhancement_prompts = {
+            'equipment_spotlight': f"Enhance this equipment image for a spotlight post about {primary_equipment.get('name', 'equipment')}. Add professional lighting effects, clean background, and highlight key features.",
+            'project_showcase': f"Transform this equipment image into a project showcase scene. Add a realistic work environment, show the equipment in action, and create a professional project setting.",
+            'industry_focus': f"Enhance this equipment for an industry-focused post. Add relevant industry context, professional work environment, and emphasize practical applications.",
+            'safety_training': f"Enhance this equipment image for safety training content. Highlight safety features, add safety equipment context, and create an educational atmosphere.",
+            'educational_content': f"Transform this equipment image for educational content about {primary_equipment.get('name', 'equipment')}. Add informative elements, clean presentation, and highlight learning aspects.",
+            'general_content': f"Enhance this equipment image for social media. Add appealing lighting, clean background, and make it more visually engaging."
+        }
+        
+        prompt = enhancement_prompts.get(content_pillar, enhancement_prompts['general_content'])
+        
+        # Generate enhanced image using existing image generation function
+        from google.genai import types
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=[prompt, image],
+            config=types.GenerateContentConfig(
+                response_modalities=['TEXT', 'IMAGE']
+            )
+        )
+        
+        # Extract enhanced image
+        for part in response.candidates[0].content.parts:
+            if part.inline_data is not None:
+                enhanced_image = Image.open(BytesIO(part.inline_data.data))
+                
+                # Convert to RGB if needed (fixes format issues)
+                if enhanced_image.mode != 'RGB':
+                    enhanced_image = enhanced_image.convert('RGB')
+                
+                # Save enhanced image to temp location with proper format
+                temp_path = f"/tmp/enhanced_{primary_equipment.get('_id', 'equipment')}.jpg"
+                enhanced_image.save(temp_path, 'JPEG', quality=95)
+                
+                return temp_path
+                
+        return None
+        
+    except Exception as e:
+        print(f"Error generating enhanced image: {e}")
+        return None
