@@ -28,6 +28,8 @@ export default defineType({
           { title: 'Content Generation', value: 'contentGeneration' },
           { title: 'Image Generation', value: 'imageGeneration' },
           { title: 'Social Media Best Practices', value: 'socialMediaBestPractices' },
+          { title: 'Safety Validation', value: 'safetyValidation' },
+          { title: 'Safe Alternative Generation', value: 'safeAlternativeGeneration' },
           { title: 'Other', value: 'other' },
         ],
       },

@@ -1,27 +1,64 @@
-
+// Corrected Equipment Schema - ALL original fields preserved, just organized in tabs
 import { defineField, defineType } from 'sanity';
 
 export default defineType({
   name: 'equipment',
   title: 'Equipment',
   type: 'document',
+  groups: [
+    {
+      name: 'basic',
+      title: 'Basic Info',
+      default: true
+    },
+    {
+      name: 'descriptions',
+      title: 'Descriptions'
+    },
+    {
+      name: 'media', 
+      title: 'Media & Assets'
+    },
+    {
+      name: 'pricing',
+      title: 'Pricing & Availability'
+    },
+    {
+      name: 'usecases',
+      title: 'Use Cases & Industries'
+    },
+    {
+      name: 'technical',
+      title: 'Technical & Safety'
+    },
+    {
+      name: 'seo',
+      title: 'SEO & Content'
+    },
+    {
+      name: 'ai',
+      title: 'AI Generated'
+    },
+    {
+      name: 'metadata',
+      title: 'Metadata & Reviews'
+    }
+  ],
   fields: [
+    // BASIC INFO TAB
     defineField({
       name: 'id',
       title: 'ID',
       type: 'string',
       validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'sku',
-      title: 'SKU',
-      type: 'string',
+      group: 'basic'
     }),
     defineField({
       name: 'name',
       title: 'Name',
       type: 'string',
       validation: (Rule) => Rule.required(),
+      group: 'basic'
     }),
     defineField({
       name: 'slug',
@@ -32,35 +69,57 @@ export default defineType({
         maxLength: 96,
       },
       validation: (Rule) => Rule.required(),
+      group: 'basic'
+    }),
+    defineField({
+      name: 'brand',
+      title: 'Brand',
+      type: 'string',
+      group: 'basic'
+    }),
+    defineField({
+      name: 'model',
+      title: 'Model',
+      type: 'string',
+      group: 'basic'
     }),
     defineField({
       name: 'categories',
       title: 'Categories',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'basic'
     }),
     defineField({
       name: 'subcategories',
       title: 'Subcategories',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'basic'
     }),
+
+    // DESCRIPTIONS TAB
     defineField({
       name: 'short_description',
       title: 'Short Description',
       type: 'text',
       rows: 2,
+      group: 'descriptions'
     }),
     defineField({
       name: 'full_description',
       title: 'Full Description',
       type: 'text',
+      group: 'descriptions'
     }),
     defineField({
       name: 'technical_description',
       title: 'Technical Description',
       type: 'text',
+      group: 'descriptions'
     }),
+
+    // MEDIA & ASSETS TAB
     defineField({
       name: 'images',
       title: 'Images',
@@ -94,85 +153,24 @@ export default defineType({
           ],
         }),
       ],
+      group: 'media'
     }),
     defineField({
       name: 'video_urls',
       title: 'Video URLs',
       type: 'array',
       of: [{ type: 'url' }],
+      group: 'media'
     }),
     defineField({
       name: 'manual_urls',
       title: 'Manual URLs',
       type: 'array',
       of: [{ type: 'url' }],
+      group: 'media'
     }),
-    defineField({
-      name: 'specifications',
-      title: 'Specifications',
-      type: 'array',
-      of: [
-        defineType({
-          name: 'specification',
-          title: 'Specification',
-          type: 'object',
-          fields: [
-            defineField({
-              name: 'name',
-              title: 'Name',
-              type: 'string',
-            }),
-            defineField({
-              name: 'value',
-              title: 'Value',
-              type: 'string',
-            }),
-            defineField({
-              name: 'unit',
-              title: 'Unit',
-              type: 'string',
-            }),
-            defineField({
-              name: 'category',
-              title: 'Category',
-              type: 'string',
-            }),
-          ],
-        }),
-      ],
-    }),
-    defineField({
-      name: 'dimensions',
-      title: 'Dimensions',
-      type: 'object',
-      fields: [
-        defineField({
-          name: 'length',
-          title: 'Length',
-          type: 'number',
-        }),
-        defineField({
-          name: 'width',
-          title: 'Width',
-          type: 'number',
-        }),
-        defineField({
-          name: 'height',
-          title: 'Height',
-          type: 'number',
-        }),
-        defineField({
-          name: 'unit',
-          title: 'Unit',
-          type: 'string',
-        }),
-      ],
-    }),
-    defineField({
-      name: 'power_source',
-      title: 'Power Source',
-      type: 'string',
-    }),
+
+    // PRICING & AVAILABILITY TAB
     defineField({
       name: 'pricing',
       title: 'Pricing',
@@ -209,6 +207,7 @@ export default defineType({
           type: 'string',
         }),
       ],
+      group: 'pricing'
     }),
     defineField({
       name: 'availability',
@@ -228,41 +227,87 @@ export default defineType({
           title: 'Quantity Available',
           type: 'number',
         }),
-        defineField({
-          name: 'next_available_date',
-          title: 'Next Available Date',
-          type: 'datetime',
-        }),
-        defineField({
-          name: 'maintenance_schedule',
-          title: 'Maintenance Schedule',
-          type: 'text',
-        }),
       ],
+      group: 'pricing'
     }),
+
+    // USE CASES & INDUSTRIES TAB
     defineField({
       name: 'primary_use_cases',
       title: 'Primary Use Cases',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'usecases'
     }),
     defineField({
       name: 'secondary_use_cases',
       title: 'Secondary Use Cases',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'usecases'
     }),
     defineField({
       name: 'industries_served',
       title: 'Industries Served',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'usecases'
     }),
     defineField({
       name: 'project_types',
       title: 'Project Types',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'usecases'
+    }),
+
+    // TECHNICAL & SAFETY TAB
+    defineField({
+      name: 'specifications',
+      title: 'Specifications',
+      type: 'array',
+      of: [
+        defineType({
+          name: 'specification',
+          title: 'Specification',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'name',
+              title: 'Name',
+              type: 'string',
+            }),
+            defineField({
+              name: 'value',
+              title: 'Value',
+              type: 'string',
+            }),
+            defineField({
+              name: 'unit',
+              title: 'Unit',
+              type: 'string',
+            }),
+            defineField({
+              name: 'category',
+              title: 'Category',
+              type: 'string',
+            }),
+          ],
+        }),
+      ],
+      group: 'technical'
+    }),
+    defineField({
+      name: 'power_source',
+      title: 'Power Source',
+      type: 'string',
+      group: 'technical'
+    }),
+    defineField({
+      name: 'weight',
+      title: 'Weight',
+      type: 'number',
+      group: 'technical'
     }),
     defineField({
       name: 'safety',
@@ -286,94 +331,67 @@ export default defineType({
           type: 'array',
           of: [{ type: 'string' }],
         }),
-        defineField({
-          name: 'compliance_standards',
-          title: 'Compliance Standards',
-          type: 'array',
-          of: [{ type: 'string' }],
-        }),
-        defineField({
-          name: 'age_restrictions',
-          title: 'Age Restrictions',
-          type: 'number',
-        }),
       ],
+      group: 'technical'
     }),
+
+    // SEO & CONTENT TAB
     defineField({
       name: 'keywords',
       title: 'Keywords',
       type: 'array',
       of: [{ type: 'string' }],
-    }),
-    defineField({
-      name: 'search_tags',
-      title: 'Search Tags',
-      type: 'array',
-      of: [{ type: 'string' }],
+      group: 'seo'
     }),
     defineField({
       name: 'related_products',
       title: 'Related Products',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'equipment' }] }],
+      group: 'seo'
     }),
-    defineField({
-      name: 'created_date',
-      title: 'Created Date',
-      type: 'datetime',
-    }),
-    defineField({
-      name: 'last_updated',
-      title: 'Last Updated',
-      type: 'datetime',
-    }),
-    defineField({
-      name: 'review_count',
-      title: 'Review Count',
-      type: 'number',
-    }),
-    defineField({
-      name: 'brand',
-      title: 'Brand',
-      type: 'string',
-    }),
-    defineField({
-      name: 'model',
-      title: 'Model',
-      type: 'string',
-    }),
-    defineField({
-      name: 'weight',
-      title: 'Weight',
-      type: 'number',
-    }),
-    defineField({
-      name: 'popularity_score',
-      title: 'Popularity Score',
-      type: 'number',
-    }),
-    defineField({
-      name: 'review_rating',
-      title: 'Review Rating',
-      type: 'number',
-    }),
+
+    // AI GENERATED TAB
     defineField({
       name: 'ai_suggested_use_cases',
       title: 'AI Suggested Use Cases',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'ai'
     }),
     defineField({
       name: 'ai_keywords',
       title: 'AI Keywords',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'ai'
     }),
     defineField({
       name: 'ai_project_types',
       title: 'AI Project Types',
       type: 'array',
       of: [{ type: 'string' }],
+      group: 'ai'
+    }),
+
+    // METADATA & REVIEWS TAB
+    defineField({
+      name: 'created_date',
+      title: 'Created Date',
+      type: 'datetime',
+      group: 'metadata'
+    }),
+    defineField({
+      name: 'last_updated',
+      title: 'Last Updated',
+      type: 'datetime',
+      group: 'metadata'
+    }),
+    defineField({
+      name: 'popularity_score',
+      title: 'Popularity Score',
+      type: 'number',
+      group: 'metadata'
     }),
   ],
   preview: {

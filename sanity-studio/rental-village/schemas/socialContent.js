@@ -20,6 +20,27 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'content_pillar',
+      title: 'Content Pillar',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Equipment Spotlight', value: 'equipment_spotlight' },
+          { title: 'Project Showcase', value: 'project_showcase' },
+          { title: 'Industry Focus', value: 'industry_focus' },
+          { title: 'Safety Training', value: 'safety_training' },
+          { title: 'Educational Content', value: 'educational_content' },
+          { title: 'General Content', value: 'general_content' },
+        ],
+      },
+    }),
+    defineField({
+      name: 'keywords',
+      title: 'Keywords',
+      type: 'string',
+      description: 'Comma-separated keywords for image search and SEO',
+    }),
+    defineField({
       name: 'platform',
       title: 'Platform',
       type: 'string',
@@ -71,6 +92,35 @@ export default defineType({
           name: 'reach',
           title: 'Reach',
           type: 'number',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'images',
+      title: 'Images',
+      type: 'array',
+      of: [
+        defineType({
+          name: 'contentImage',
+          title: 'Content Image',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'url',
+              title: 'Image URL',
+              type: 'url',
+            }),
+            defineField({
+              name: 'alt_text',
+              title: 'Alt Text',
+              type: 'string',
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+            }),
+          ],
         }),
       ],
     }),
