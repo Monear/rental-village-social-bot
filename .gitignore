@@ -13,3 +13,14 @@ __pycache__/
 node_modules/
 
 venv
+
+# Generated content (should not be committed)
+src/generated_images/
+*.png
+*.jpg
+*.jpeg
+
+# Logs and temporary files
+*.log
+trace_*.py
+*_trace_*.py
