@@ -1,0 +1,14 @@
+# Use an official Node.js runtime as a parent image
+FROM node:20-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the entire sanity-studio directory (including node_modules if they exist)
+COPY sanity-studio/rental-village/ ./
+
+# Expose the port Sanity Studio runs on (default is 3333)
+EXPOSE 3333
+
+# Command to run the Sanity Studio in development mode (for network access)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3333"]

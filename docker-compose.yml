@@ -4,22 +4,23 @@ services:
   sanity-studio:
     build:
       context: .
-      dockerfile: Dockerfile.studio
+      dockerfile: docker/build/Dockerfile.studio
     ports:
-      - "3333:3333"
+      - "0.0.0.0:3333:3333"  # Bind to all interfaces for network access
     volumes:
-      - ./sanity-studio/rental-village:/app/sanity-studio/rental-village
+      - ./sanity-studio/rental-village:/app
     environment:
       # Sanity Studio environment variables (if any, typically handled by .env in the studio dir)
       SANITY_STUDIO_PROJECT_ID: ${SANITY_PROJECT_ID}
       SANITY_STUDIO_DATASET: ${SANITY_DATASET}
+      HOST: 0.0.0.0  # Allow external connections
     # This command is for development. For production, you might use `npm run start`
-    command: npm run dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3333"]
 
   mcp-server:
     build:
       context: .
-      dockerfile: Dockerfile.mcp
+      dockerfile: docker/build/Dockerfile.mcp
     ports:
       - "8000:8000"
     environment:
@@ -32,7 +33,7 @@ services:
   content-generation:
     build:
       context: .
-      dockerfile: Dockerfile.content
+      dockerfile: docker/build/Dockerfile.content
     environment:
       NOTION_API_KEY: ${NOTION_API_KEY}
       NOTION_DATABASE_ID: ${NOTION_DATABASE_ID}
@@ -44,3 +45,19 @@ services:
       - mcp-server # Content generation depends on MCP server (for data access)
     # This service is typically run manually for specific tasks, not as a long-running service
     # command: python src/suggest_content.py --num-ideas 1 # Example of how to run a task
+
+  social-automation:
+    build:
+      context: .
+      dockerfile: docker/build/Dockerfile.social
+    ports:
+      - "8080:8080" # Health check endpoint
+    environment:
+      NOTION_TOKEN: ${NOTION_TOKEN}
+      DATABASE_ID: ${DATABASE_ID}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${FACEBOOK_PAGE_ACCESS_TOKEN}
+      FACEBOOK_PAGE_ID: ${FACEBOOK_PAGE_ID}
+    restart: unless-stopped
+    depends_on:
+      - sanity-studio # Needs access to content data
+    # Runs continuously with cron-based automation every 5 minutes

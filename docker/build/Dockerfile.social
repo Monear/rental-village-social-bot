@@ -1,0 +1,51 @@
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies including cron
+RUN apt-get update && apt-get install -y \
+    cron \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY src/ ./src/
+COPY .env ./
+
+# Copy cron configuration and automation scripts
+COPY docker/social/ ./docker/social/
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Copy and set up cron scripts
+RUN chmod +x /app/docker/social/social-automation-cron.sh
+RUN chmod +x /app/docker/social/entrypoint.sh
+
+# Install cron job
+RUN echo "*/5 * * * * cd /app && /app/docker/social/social-automation-cron.sh >> /app/logs/cron.log 2>&1" | crontab -
+
+# Create entrypoint script
+COPY docker/social/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Health check
+HEALTHCHECK --interval=5m --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose port for health check endpoint
+EXPOSE 8080
+
+# Use entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]

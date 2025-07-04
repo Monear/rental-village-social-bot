@@ -3,3 +3,5 @@ google-genai
 notion-client
 python-dotenv
 pillow
+requests
+apscheduler

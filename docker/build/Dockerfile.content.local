@@ -1,0 +1,27 @@
+# Workaround Dockerfile for Podman networking issues
+FROM python:3.10-slim-bullseye
+
+# Set the working directory in the container
+WORKDIR /app
+
+ENV PYTHONPATH=/app
+
+# Copy pre-installed packages from local environment
+# We'll install deps locally and copy the site-packages
+COPY requirements.txt .
+
+# Copy the application's code into the container
+COPY src/ ./src
+COPY tests/ ./tests
+COPY src/data/ ./src/data
+COPY src/prompts/ ./src/prompts
+
+# Copy Sanity Studio related files
+COPY sanity-studio/ ./sanity-studio/
+
+# Install dependencies after copying (avoids network issues during build)
+RUN pip install --no-cache-dir -r requirements.txt || echo "Network install failed, using local packages"
+
+# This container will run scripts on-demand.
+# The command will be provided when we run the container.
+# For example: `python src/suggest_content.py`
