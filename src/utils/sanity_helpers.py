@@ -33,6 +33,51 @@ def save_social_content_to_sanity(idea: dict) -> str | None:
     Returns the Sanity document ID if successful, None otherwise.
     """
     try:
+        # Debug: Check what data we received
+        print(f"📝 Processing content for Sanity: {idea.get('title', 'Unknown')}")
+        if 'enhanced_images' in idea:
+            print(f"   Enhanced images found: {len(idea['enhanced_images'])}")
+        if 'enhanced_images_clean' in idea:
+            print(f"   Clean images found: {len(idea['enhanced_images_clean'])}")
+        
+        # Check if the main idea object contains any bytes
+        def check_for_bytes_in_idea(obj, path="idea"):
+            if isinstance(obj, bytes):
+                print(f"  🔍 Found bytes object in input at: {path}")
+                return True
+            elif isinstance(obj, dict):
+                for key, value in obj.items():
+                    if check_for_bytes_in_idea(value, f"{path}.{key}"):
+                        return True
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    if check_for_bytes_in_idea(item, f"{path}[{i}]"):
+                        return True
+            return False
+        
+        check_for_bytes_in_idea(idea)
+        
+        # Store original enhanced images before cleaning (they contain the binary data we need)
+        original_enhanced_images = idea.get("enhanced_images", [])
+        
+        # Create a clean copy of idea without binary data to prevent JSON serialization errors
+        clean_idea = {}
+        for key, value in idea.items():
+            # Exclude binary data fields from final document
+            if key in ['optimized_images', 'image_generation_summary']:
+                continue  # Skip these binary data fields
+            elif key == 'enhanced_images':
+                # Keep enhanced_images structure but we'll process the original binary data separately
+                clean_idea[key] = value
+            elif key == 'enhanced_images_clean':
+                continue  # Skip this, we'll use enhanced_images
+            else:
+                clean_idea[key] = value
+        
+        # Use clean_idea for processing
+        idea = clean_idea
+        print(f"  🧹 Using cleaned data structure for Sanity (preserved enhanced_images)")
+        
         # Convert equipment data to Sanity references
         equipment_references = []
         if idea.get("related_equipment"):
@@ -43,20 +88,153 @@ def save_social_content_to_sanity(idea: dict) -> str | None:
                         "_ref": equipment["_id"]
                     })
 
-        # Use real equipment images (no upload needed - they're already on CDN)
-        image_data = []
-        equipment_images = idea.get("equipment_images", [])
-        for img in equipment_images:
-            image_obj = create_sanity_image_object(
-                asset_url=img['url'],
-                alt_text=img['alt_text'],
-                caption=img['caption']
-            )
-            image_data.append(image_obj)
+        # Process enhanced images (primary method) or fallback to equipment images
+        image_objects = []
         
-        if image_data:
-            print(f"✅ Using {len(image_data)} real equipment images")
+        # Use the original enhanced images (with binary data) for processing
+        enhanced_images = original_enhanced_images
+        if enhanced_images:
+            print(f"📸 Processing {len(enhanced_images)} enhanced images for Sanity upload...")
+            
+            for i, enhanced_img in enumerate(enhanced_images):
+                try:
+                    # Handle enhanced images with binary data
+                    if enhanced_img.get('image_data'):
+                        # Save binary data to temporary file with proper format handling
+                        import tempfile
+                        import base64
+                        
+                        image_data = enhanced_img['image_data']
+                        
+                        # Debug: Log image data type and size
+                        print(f"  🔍 Image {i+1} data type: {type(image_data)}")
+                        if hasattr(image_data, '__len__'):
+                            print(f"  🔍 Image {i+1} data size: {len(image_data)} bytes")
+                        
+                        # Handle different data formats from Gemini API
+                        if isinstance(image_data, str):
+                            # If it's a string, it's likely base64 encoded
+                            try:
+                                image_data = base64.b64decode(image_data)
+                            except Exception as e:
+                                print(f"  ❌ Error decoding base64 image data: {e}")
+                                continue
+                        elif hasattr(image_data, 'decode'):
+                            # If it has a decode method, it might be bytes that need decoding
+                            try:
+                                # Try to decode as base64 first
+                                image_data = base64.b64decode(image_data.decode())
+                            except:
+                                # If base64 decode fails, use as-is
+                                image_data = image_data
+                        
+                        # Validate image data before writing
+                        if not image_data or len(image_data) < 100:
+                            print(f"  ❌ Image {i+1} data too small or empty ({len(image_data) if image_data else 0} bytes)")
+                            continue
+                        
+                        # Convert to proper image format using PIL
+                        from PIL import Image
+                        import io
+                        
+                        # Load the image data and convert to PNG
+                        try:
+                            image = Image.open(io.BytesIO(image_data))
+                            # Convert to RGB if needed (removes alpha channel issues)
+                            if image.mode != 'RGB':
+                                image = image.convert('RGB')
+                            
+                            # Save as PNG to temporary file
+                            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                                image.save(temp_file, 'PNG')
+                                temp_path = temp_file.name
+                                
+                        except Exception as e:
+                            print(f"  ❌ Error converting image {i+1} format: {e}")
+                            continue
+                        
+                        # Validate the file was written correctly
+                        if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+                            print(f"  ❌ Failed to write image {i+1} to temporary file")
+                            continue
+                        
+                        print(f"  📁 Wrote image {i+1} to temp file: {os.path.getsize(temp_path)} bytes")
+                        
+                        # Try uploading to Sanity with JPEG format instead  
+                        # Convert to JPEG which Sanity prefers
+                        try:
+                            image = Image.open(io.BytesIO(image_data))
+                            if image.mode != 'RGB':
+                                image = image.convert('RGB')
+                            
+                            # Save as JPEG instead of PNG
+                            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as jpeg_file:
+                                image.save(jpeg_file, 'JPEG', quality=95)
+                                jpeg_path = jpeg_file.name
+                                
+                            print(f"  📁 Converted image {i+1} to JPEG: {os.path.getsize(jpeg_path)} bytes")
+                            
+                            # Upload JPEG to Sanity
+                            asset_result = upload_image_to_sanity(jpeg_path)
+                            if asset_result:
+                                image_obj = create_sanity_image_object(
+                                    asset_data=asset_result,
+                                    alt_text=enhanced_img.get('alt_text', f"Enhanced image {i+1}"),
+                                    caption=enhanced_img.get('caption', enhanced_img.get('equipment_name', 'Equipment'))
+                                )
+                                image_objects.append(image_obj)
+                                print(f"  ✅ Uploaded enhanced image {i+1}: {enhanced_img.get('equipment_name', 'Unknown')}")
+                            else:
+                                print(f"  ❌ Failed to upload enhanced image {i+1}")
+                            
+                            # Clean up temp files
+                            os.unlink(temp_path)
+                            os.unlink(jpeg_path)
+                            
+                        except Exception as jpeg_error:
+                            print(f"  ❌ Error converting to JPEG: {jpeg_error}")
+                            # Clean up temp file
+                            os.unlink(temp_path)
+                    
+                    # Handle enhanced images with URLs (fallback to original)
+                    elif enhanced_img.get('url'):
+                        image_obj = create_sanity_image_object(
+                            asset_data=enhanced_img['url'],
+                            alt_text=enhanced_img.get('alt_text', f"Enhanced image {i+1}"),
+                            caption=enhanced_img.get('caption', enhanced_img.get('equipment_name', 'Equipment'))
+                        )
+                        image_objects.append(image_obj)
+                        print(f"  ✅ Using enhanced image URL {i+1}: {enhanced_img.get('equipment_name', 'Unknown')}")
+                
+                except Exception as e:
+                    print(f"  ❌ Error processing enhanced image {i+1}: {e}")
+        
+        # Fallback to equipment images (legacy method)
+        elif idea.get("equipment_images", []):
+            equipment_images = idea.get("equipment_images", [])
+            print(f"📸 Using {len(equipment_images)} equipment images (fallback method)...")
+            
+            for img in equipment_images:
+                image_obj = create_sanity_image_object(
+                    asset_data=img['url'],
+                    alt_text=img['alt_text'],
+                    caption=img['caption']
+                )
+                image_objects.append(image_obj)
+        
+        if image_objects:
+            print(f"✅ Prepared {len(image_objects)} images for Sanity content")
+        else:
+            print("⚠️  No images found to add to Sanity content")
 
+        # Remove binary data from enhanced_images for the final document
+        if idea.get("enhanced_images"):
+            clean_enhanced_images = []
+            for img in idea["enhanced_images"]:
+                clean_img = {k: v for k, v in img.items() if k != 'image_data'}
+                clean_enhanced_images.append(clean_img)
+            idea["enhanced_images"] = clean_enhanced_images
+        
         # Map the idea dictionary to the Sanity socialContent schema
         sanity_document = {
             "_type": "socialContent",
@@ -68,7 +246,7 @@ def save_social_content_to_sanity(idea: dict) -> str | None:
             "platform": idea.get("platform", "Multi-platform"),
             "status": "generated",
             "performance_metrics": {},
-            "images": image_data,
+            "images": image_objects,
             "related_equipment": equipment_references,
             "ai_generation_metadata": {
                 "model_used": "gemini-1.5-flash",
@@ -76,6 +254,26 @@ def save_social_content_to_sanity(idea: dict) -> str | None:
                 "timestamp": datetime.now().isoformat()
             },
         }
+        
+        # Debug: Check for any bytes objects before JSON serialization
+        def check_for_bytes(obj, path=""):
+            if isinstance(obj, bytes):
+                print(f"  🔍 Found bytes object at: {path}")
+                return True
+            elif isinstance(obj, dict):
+                for key, value in obj.items():
+                    if check_for_bytes(value, f"{path}.{key}"):
+                        return True
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    if check_for_bytes(item, f"{path}[{i}]"):
+                        return True
+            return False
+        
+        if check_for_bytes(sanity_document):
+            print("  ❌ Document contains bytes objects that will cause JSON serialization errors")
+        else:
+            print("  ✅ Document is clean for JSON serialization")
 
         # Use createOrReplace to handle potential re-runs or updates
         transactions = [{'createOrReplace': sanity_document}]

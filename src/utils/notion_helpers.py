@@ -156,7 +156,7 @@ def get_existing_notion_ideas(notion, database_id):
     return existing_ideas
 
 def add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3):
-    """Adds a single content idea, with up to n AI-generated images, to the Notion database."""
+    """Adds a single content idea to the Notion database, using enhanced images if available."""
     suggested_date = (date.today() + timedelta(days=random.randint(7, 14))).isoformat()
     properties = {
         "Name": {"title": [{"text": {"content": idea['title']}}]},
@@ -168,56 +168,110 @@ def add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3):
     try:
         page_response = notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties=properties)
         page_id = page_response['id']
-        # Read image generation instructions from Sanity
-        from sanity import Client
-        import logging
         
-        # Initialize Sanity client
-        SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID", "2pxuaj9k")
-        SANITY_DATASET = os.environ.get("SANITY_DATASET", "production")
-        SANITY_API_TOKEN = os.environ.get("SANITY_API_TOKEN")
+        # Check if enhanced images are already available (preferred method)
+        enhanced_images = idea.get('enhanced_images', [])
+        if enhanced_images:
+            print(f"✅ Using {len(enhanced_images)} enhanced images (text suppression applied)")
+            # Process enhanced images and upload to Notion
+            for i, enhanced_image in enumerate(enhanced_images):
+                try:
+                    # Handle different image formats from enhanced generation
+                    if enhanced_image.get('image_data'):
+                        # Enhanced image with binary data
+                        image_filename = f"{idea['title'].replace(' ', '_').replace('/', '_')[:50]}_enhanced_{i+1}.png"
+                        script_dir = os.path.dirname(__file__)
+                        images_dir = os.path.join(script_dir, '..', 'generated_images')
+                        os.makedirs(images_dir, exist_ok=True)
+                        image_path = os.path.join(images_dir, image_filename)
+                        
+                        # Save enhanced image data to file
+                        with open(image_path, 'wb') as f:
+                            f.write(enhanced_image['image_data'])
+                        
+                        success = upload_image_to_notion(page_id, image_path)
+                        if not success:
+                            print(f"❌ Failed to upload enhanced image {i+1} to Notion for '{idea['title']}'")
+                    
+                    elif enhanced_image.get('url'):
+                        # Enhanced image with URL (fallback to original)
+                        print(f"⚠️  Enhanced image {i+1} is URL-based, skipping upload")
+                        
+                except Exception as e:
+                    print(f"❌ Error processing enhanced image {i+1}: {e}")
         
-        sanity_client = Client(
-            project_id=SANITY_PROJECT_ID,
-            dataset=SANITY_DATASET,
-            token=SANITY_API_TOKEN,
-            use_cdn=True,
-            logger=logging.getLogger(__name__)
-        )
-        
-        try:
-            query_result = sanity_client.query(
-                '*[_type == "contentPrompt" && title == "Image Generation Instructions"][0]'
-            )
-            image_instructions_doc = query_result.get('result')
-            image_instructions = image_instructions_doc.get('content') if image_instructions_doc else ""
-            if not image_instructions:
-                print("Warning: Image generation instructions not found in Sanity. Using basic prompt.")
-                image_instructions = "Generate a professional, high-quality image that represents the equipment rental content."
-        except Exception as e:
-            print(f"Warning: Error fetching image instructions from Sanity: {e}. Using basic prompt.")
-            image_instructions = "Generate a professional, high-quality image that represents the equipment rental content."
-        title_context = idea.get('title', '')
-        body_context = idea.get('body', '')
-        keywords_context = idea.get('keywords', '')
-        base_image_prompt_parts = []
-        if title_context: base_image_prompt_parts.append(f"Title: {title_context}")
-        if body_context: base_image_prompt_parts.append(f"Description: {body_context}")
-        if keywords_context: base_image_prompt_parts.append(f"Keywords: {keywords_context}")
-        base_image_prompt = ". ".join(base_image_prompt_parts)
-        image_prompt = f"{image_instructions}\n\n{base_image_prompt}" if image_instructions else base_image_prompt
-        image_filename_base = idea['title'].replace(' ', '_').replace('/', '_')[:50]
-        script_dir = os.path.dirname(__file__)
-        images_dir = os.path.join(script_dir, '..', 'generated_images')
-        os.makedirs(images_dir, exist_ok=True)
-        output_path = os.path.join(images_dir, image_filename_base + ".png")
-        image_paths = generate_image_with_gemini(image_prompt, output_path, num_images=num_images)
-        if image_paths:
-            for img_path in image_paths:
-                success = upload_image_to_notion(page_id, img_path)
-                if not success:
-                    print(f"❌ Failed to upload image {img_path} to Notion for '{idea['title']}'")
         else:
-            print(f"❌ Failed to generate images for '{idea['title']}'")
+            # Fallback to legacy image generation (with text suppression applied)
+            print(f"⚠️  No enhanced images found, falling back to legacy generation with text suppression")
+            
+            # Load text suppression settings from Sanity
+            from sanity import Client
+            import logging
+            
+            # Initialize Sanity client
+            SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID", "2pxuaj9k")
+            SANITY_DATASET = os.environ.get("SANITY_DATASET", "production")
+            SANITY_API_TOKEN = os.environ.get("SANITY_API_TOKEN")
+            
+            sanity_client = Client(
+                project_id=SANITY_PROJECT_ID,
+                dataset=SANITY_DATASET,
+                token=SANITY_API_TOKEN,
+                use_cdn=True,
+                logger=logging.getLogger(__name__)
+            )
+            
+            try:
+                # Get image generation settings with text suppression
+                query_result = sanity_client.query(
+                    '*[_type == "imageGenerationSettings" && active == true][0]'
+                )
+                image_settings = query_result.get('result', {})
+                text_suppression = image_settings.get('textSuppressionSettings', {})
+                
+                # Build text suppression prompt
+                base_prompt = "Generate a professional, high-quality equipment rental image."
+                suppression_prompts = []
+                
+                if text_suppression.get('suppressAllText', False):
+                    no_text_prompts = text_suppression.get('noTextPrompts', [])
+                    suppression_prompts.extend(no_text_prompts[:3])  # Use top 3
+                    
+                    text_prohibitions = text_suppression.get('textProhibitions', [])
+                    if text_prohibitions:
+                        suppression_prompts.append(f"Avoid: {', '.join(text_prohibitions[:5])}")
+                
+                # Combine prompts
+                image_prompt_parts = [base_prompt] + suppression_prompts
+                
+                # Add content context
+                title_context = idea.get('title', '')
+                body_context = idea.get('body', '')
+                if title_context:
+                    image_prompt_parts.append(f"Context: {title_context}")
+                
+                image_prompt = " ".join(image_prompt_parts)
+                print(f"📝 Applied text suppression prompt: {image_prompt[:100]}...")
+                
+            except Exception as e:
+                print(f"❌ Error loading text suppression settings: {e}. Using basic prompt.")
+                image_prompt = "Generate a professional, high-quality equipment rental image with no text overlays."
+            
+            # Generate images with text suppression
+            image_filename_base = idea['title'].replace(' ', '_').replace('/', '_')[:50]
+            script_dir = os.path.dirname(__file__)
+            images_dir = os.path.join(script_dir, '..', 'generated_images')
+            os.makedirs(images_dir, exist_ok=True)
+            output_path = os.path.join(images_dir, image_filename_base + ".png")
+            
+            image_paths = generate_image_with_gemini(image_prompt, output_path, num_images=num_images)
+            if image_paths:
+                for img_path in image_paths:
+                    success = upload_image_to_notion(page_id, img_path)
+                    if not success:
+                        print(f"❌ Failed to upload image {img_path} to Notion for '{idea['title']}'")
+            else:
+                print(f"❌ Failed to generate images for '{idea['title']}'")
+                
     except Exception as e:
         print(f"Error adding idea to Notion: {e}")

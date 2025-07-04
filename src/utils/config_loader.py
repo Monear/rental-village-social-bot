@@ -38,6 +38,27 @@ class ImageGenerationConfig:
     quality_standards: Dict[str, Any]
     generation_rules: Dict[str, Any]
     safety_filters: Dict[str, Any]
+    text_suppression_settings: Dict[str, Any]
+
+@dataclass
+class BusinessContextConfig:
+    """Business context information from Sanity"""
+    name: str
+    slogan: Optional[str]
+    description: Optional[str]
+    location: Dict[str, Any]
+    operating_hours: Dict[str, Any]
+    social_media_profiles: Dict[str, Any]
+    certifications: list
+    service_areas: list
+
+@dataclass
+class ContentPromptConfig:
+    """Content prompt templates from Sanity"""
+    content_generation_prompts: Dict[str, str]
+    image_generation_prompts: Dict[str, str]
+    social_media_best_practices: Dict[str, str]
+    safety_validation_prompts: Dict[str, str]
 
 @dataclass
 class PlatformConfig:
@@ -56,6 +77,8 @@ class ConfigurationLoader:
         self._seasonal_config: Optional[SeasonalConfig] = None
         self._image_config: Optional[ImageGenerationConfig] = None
         self._platform_config: Optional[PlatformConfig] = None
+        self._business_context: Optional[BusinessContextConfig] = None
+        self._content_prompts: Optional[ContentPromptConfig] = None
         
     def load_all_configurations(self) -> bool:
         """Load all configuration data from Sanity"""
@@ -85,6 +108,16 @@ class ConfigurationLoader:
             if not self._platform_config:
                 logger.error("Failed to load platform configuration")
                 return False
+            
+            # Load business context (optional)
+            self._business_context = self._load_business_context()
+            if not self._business_context:
+                logger.warning("Business context not available - content will use defaults")
+                
+            # Load content prompts (optional)
+            self._content_prompts = self._load_content_prompts()
+            if not self._content_prompts:
+                logger.warning("Content prompts not available - using default prompts")
             
             logger.info("✅ All configurations loaded successfully")
             return True
@@ -158,7 +191,8 @@ class ConfigurationLoader:
                 enhancement_prompts=config_data.get('imageEnhancementPrompts', {}),
                 quality_standards=config_data.get('imageQualityStandards', {}),
                 generation_rules=config_data.get('generationRules', {}),
-                safety_filters=config_data.get('safetyFilters', {})
+                safety_filters=config_data.get('safetyFilters', {}),
+                text_suppression_settings=config_data.get('textSuppressionSettings', {})
             )
             
         except Exception as e:
@@ -188,6 +222,78 @@ class ConfigurationLoader:
             logger.error(f"Error loading platform config: {e}")
             return None
     
+    def _load_business_context(self) -> Optional[BusinessContextConfig]:
+        """Load business context information"""
+        try:
+            result = self.sanity_client.query(
+                '*[_type == "businessContext"][0]'
+            )
+            
+            config_data = result.get('result')
+            if not config_data:
+                logger.warning("No business context found")
+                return None
+            
+            return BusinessContextConfig(
+                name=config_data.get('name', ''),
+                slogan=config_data.get('slogan'),
+                description=config_data.get('description'),
+                location=config_data.get('location', {}),
+                operating_hours=config_data.get('operatingHours', {}),
+                social_media_profiles=config_data.get('socialMediaProfiles', {}),
+                certifications=config_data.get('certifications', []),
+                service_areas=config_data.get('serviceAreas', [])
+            )
+            
+        except Exception as e:
+            logger.error(f"Error loading business context: {e}")
+            return None
+    
+    def _load_content_prompts(self) -> Optional[ContentPromptConfig]:
+        """Load content prompt templates"""
+        try:
+            result = self.sanity_client.query(
+                '*[_type == "contentPrompt"]'
+            )
+            
+            prompts_data = result.get('result', [])
+            if not prompts_data:
+                logger.warning("No content prompts found")
+                return None
+            
+            # Organize prompts by type/title
+            content_generation_prompts = {}
+            image_generation_prompts = {}
+            social_media_best_practices = {}
+            safety_validation_prompts = {}
+            
+            for prompt in prompts_data:
+                title = prompt.get('title', '')
+                content = prompt.get('content', '')
+                prompt_type = prompt.get('type', 'general')
+                
+                if 'content generation' in title.lower():
+                    content_generation_prompts[title] = content
+                elif 'image generation' in title.lower():
+                    image_generation_prompts[title] = content
+                elif 'social media' in title.lower():
+                    social_media_best_practices[title] = content
+                elif 'safety' in title.lower():
+                    safety_validation_prompts[title] = content
+                else:
+                    content_generation_prompts[title] = content
+            
+            return ContentPromptConfig(
+                content_generation_prompts=content_generation_prompts,
+                image_generation_prompts=image_generation_prompts,
+                social_media_best_practices=social_media_best_practices,
+                safety_validation_prompts=safety_validation_prompts
+            )
+            
+        except Exception as e:
+            logger.error(f"Error loading content prompts: {e}")
+            return None
+    
     @property
     def content_strategy(self) -> ContentStrategyConfig:
         """Get content strategy configuration"""
@@ -215,6 +321,16 @@ class ConfigurationLoader:
         if not self._platform_config:
             raise ValueError("Platform config not loaded. Call load_all_configurations() first.")
         return self._platform_config
+    
+    @property
+    def business_context(self) -> Optional[BusinessContextConfig]:
+        """Get business context configuration"""
+        return self._business_context
+    
+    @property
+    def content_prompts(self) -> Optional[ContentPromptConfig]:
+        """Get content prompt configuration"""
+        return self._content_prompts
     
     def get_pillar_weight(self, pillar: str) -> float:
         """Get weight for specific content pillar"""
@@ -256,4 +372,6 @@ class ConfigurationLoader:
         self._seasonal_config = None
         self._image_config = None
         self._platform_config = None
+        self._business_context = None
+        self._content_prompts = None
         return self.load_all_configurations()

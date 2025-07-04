@@ -4,11 +4,32 @@
 
 This document serves as a comprehensive specification for migrating the Rental Village Social Media Bot into a Model Context Protocol (MCP) ready system with Sanity Studio integration. **Read each section carefully and implement step-by-step. Make detailed notes after each implementation phase.**
 
+**⚠️ CRITICAL: Professional Review Process**
+- After implementing ANY changes, ALWAYS create detailed notes documenting what was done
+- If encountering ANY errors or issues, STOP after 3 attempts and escalate to Claude for senior review
+- When escalating, provide detailed error analysis and include deep Google searches for solutions
+- Claude serves as the senior developer for code review and professional issue resolution
+
 ## File Interaction Rules
 
 -   **DO NOT** read, write, or modify the `.env` file under any circumstances. This file contains sensitive credentials and must never be exposed.
 -   Always respect the patterns in the `.gitignore` file.
 -   **IMPORTANT**: After completing each major section, add implementation notes under the "AI Implementation Notes" section at the bottom of this document.
+-   **ESCALATION PROTOCOL**: When encountering persistent issues (3+ failed attempts), escalate to Claude in CLAUDE.md for senior review
+
+## Cross-Agent Coordination
+
+**Claude Senior Developer** (CLAUDE.md):
+- **Role**: Senior Developer providing code review and technical oversight
+- **Responsibilities**: Final approval of implementations, issue resolution, architecture decisions
+- **Escalation**: Receive complex technical issues after 3 failed attempts
+- **Documentation**: Maintains professional review logs and technical decisions
+
+**Gemini Implementation Agent** (GEMINI.md):
+- **Role**: Implementation specialist for MCP system migration
+- **Responsibilities**: Execute development tasks, document progress, handle initial troubleshooting
+- **Escalation**: Escalate to Claude after 3 failed attempts with detailed analysis
+- **Documentation**: Maintain detailed implementation notes and progress tracking
 
 ---
 
@@ -537,3 +558,29 @@ For image generation capabilities, `google-genai` is required, not `google-gener
     - `docs/podman_commands.md` (renamed to `docs/docker-compose_commands.md` and updated)
 - Testing Status: Project is complete and fully documented.
 - Notes: The project is now ready for handover. All services are containerized and can be managed with `docker-compose`. The documentation provides a comprehensive guide for deployment, maintenance, and usage.
+
+**2025-07-03** - Claude Senior Review & System Cleanup:
+- Completed: Comprehensive code review and system cleanup by Claude (senior developer)
+- Challenges: Multiple path resolution issues, import errors, and Sanity Studio schema problems
+- Solutions Applied:
+  - Fixed all hardcoded paths (5 files) to use relative path resolution
+  - Corrected Sanity import syntax (8 files) 
+  - Enhanced suggest_content.py with platform detection and equipment linking
+  - Reorganized Sanity schema with 9 logical tabs for content generation
+  - Fixed missing `_key` properties causing Studio errors
+  - Removed non-essential fields (sku, dimensions, review fields, etc.)
+  - Created admin utilities in `src/utils/admin/` for maintenance
+  - Cleaned up root directory and moved scripts to proper locations
+- Files Created/Modified:
+  - All Python files in `src/` (path and import fixes)
+  - `sanity-studio/rental-village/schemas/equipment.js` (reorganized with tabs)
+  - `src/utils/admin/fix-sanity-data.py` (data maintenance tool)
+  - `src/utils/admin/install-deps-and-fix.sh` (automated admin tool)
+  - Updated CLAUDE.md and GEMINI.md documentation
+- Testing Status: ✅ System fully operational with improved code quality
+- Notes: 
+  - Sanity Studio now has clean, organized interface optimized for content generation
+  - All "Missing keys" errors resolved
+  - System ready for content generation workflows
+  - Administrative tools available for ongoing maintenance
+  - **Known Issue**: Podman container networking issues during build (workaround implemented)

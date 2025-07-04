@@ -47,7 +47,7 @@ export default {
           name: 'logoUsage',
           title: 'Logo Usage Guidelines',
           type: 'text',
-          initialValue: 'Always include the Rental Village logo in the bottom right corner. Maintain clear space around the logo equal to the height of the logo.'
+          initialValue: 'Do not attempt to generate or include logos in images. Images should be clean and logo-free to maintain brand integrity.'
         },
         {
           name: 'fontPreferences',
@@ -181,8 +181,8 @@ export default {
           name: 'includeWatermark',
           title: 'Include Watermark',
           type: 'boolean',
-          description: 'Add Rental Village watermark to generated images',
-          initialValue: true
+          description: 'Do not add watermarks to generated images - maintain clean, professional imagery',
+          initialValue: false
         },
         {
           name: 'watermarkPosition',
@@ -198,6 +198,79 @@ export default {
             ]
           },
           initialValue: 'bottom-right'
+        }
+      ]
+    },
+    {
+      name: 'textSuppressionSettings',
+      title: 'Text Suppression Settings',
+      type: 'object',
+      description: 'Settings to prevent text generation in images',
+      fields: [
+        {
+          name: 'suppressAllText',
+          title: 'Suppress All Text',
+          type: 'boolean',
+          description: 'Prevent any text, words, or writing from appearing in generated images',
+          initialValue: true
+        },
+        {
+          name: 'noTextPrompts',
+          title: 'No Text Prompts',
+          type: 'array',
+          of: [{ type: 'string' }],
+          description: 'Specific prompts to ensure no text appears in images',
+          initialValue: [
+            'no text visible',
+            'no words in image',
+            'no writing or labels',
+            'no signs with text',
+            'no readable text',
+            'text-free image',
+            'clean image without any text overlay'
+          ]
+        },
+        {
+          name: 'textProhibitions',
+          title: 'Text Prohibitions',
+          type: 'array',
+          of: [{ type: 'string' }],
+          description: 'Specific text elements to avoid in image generation',
+          initialValue: [
+            'social media post layouts',
+            'text overlays',
+            'written descriptions',
+            'captions in image',
+            'promotional text',
+            'advertising copy',
+            'social media templates',
+            'text-based graphics',
+            'logos or watermarks',
+            'brand marks',
+            'company logos',
+            'watermark overlays'
+          ]
+        },
+        {
+          name: 'focusOnVisuals',
+          title: 'Focus on Visuals Only',
+          type: 'boolean',
+          description: 'Emphasize pure visual content without textual elements',
+          initialValue: true
+        },
+        {
+          name: 'visualOnlyPrompts',
+          title: 'Visual-Only Enhancement Prompts',
+          type: 'array',
+          of: [{ type: 'string' }],
+          description: 'Prompts that emphasize visual elements only',
+          initialValue: [
+            'focus on equipment details and visual appeal',
+            'emphasize colors, textures, and composition',
+            'highlight visual storytelling without text',
+            'create compelling visual narrative',
+            'showcase equipment through pure imagery'
+          ]
         }
       ]
     },

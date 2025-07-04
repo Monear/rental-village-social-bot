@@ -56,7 +56,7 @@ sanity_client = Client(
     project_id=SANITY_PROJECT_ID,
     dataset=SANITY_DATASET,
     token=SANITY_API_TOKEN,
-    use_cdn=True,
+    use_cdn=False,  # Disable CDN to get fresh data
     logger=logger
 )
 
@@ -405,9 +405,26 @@ class ContentGenerator:
         final_content['related_equipment'] = equipment_data
         final_content['equipment_count'] = len(equipment_data)
         
-        # Add enhanced images
+        # Add enhanced images (sanitized for JSON serialization)
         if images:
-            final_content['enhanced_images'] = images
+            # Create clean version without binary data for JSON serialization
+            sanitized_images = []
+            for img in images:
+                clean_img = {
+                    'type': img.get('type'),
+                    'equipment_name': img.get('equipment_name'),
+                    'equipment_id': img.get('equipment_id'),
+                    'enhancement_description': img.get('enhancement_description'),
+                    'alt_text': img.get('alt_text'),
+                    'caption': img.get('caption'),
+                    'url': img.get('url')  # Only include URL if present, not binary data
+                }
+                # Remove None values
+                clean_img = {k: v for k, v in clean_img.items() if v is not None}
+                sanitized_images.append(clean_img)
+            
+            final_content['enhanced_images'] = images  # Keep full data for Notion/processing
+            final_content['enhanced_images_clean'] = sanitized_images  # Clean version for JSON
             final_content['image_count'] = len(images)
             
             # Get generation summary

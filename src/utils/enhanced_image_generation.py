@@ -59,6 +59,11 @@ class EnhancedImageGenerator:
                     content_pillar, equipment, content_context, platform
                 )
                 
+                # Log the prompt being used for debugging
+                logger.info(f"🎨 Enhancement prompt for {equipment.get('name', 'Unknown')}:")
+                logger.info(f"   Full prompt: {enhancement_prompt}")
+                logger.info(f"   Prompt length: {len(enhancement_prompt)} characters")
+                
                 # Enhance image with Gemini 2.0
                 enhanced_image = await self._enhance_image_with_gemini(
                     image_data, enhancement_prompt, equipment
@@ -125,13 +130,44 @@ class EnhancedImageGenerator:
                                    equipment: Dict, 
                                    content_context: str,
                                    platform: str) -> str:
-        """Generate context-aware enhancement prompt"""
+        """Generate context-aware enhancement prompt with text suppression"""
         
         # Get base enhancement prompt for pillar
         base_prompt = self.config.image_config.enhancement_prompts.get(
             content_pillar, 
             "Enhance this equipment image with professional lighting and clean background."
         )
+        
+        # Get text suppression settings
+        text_suppression = self.config.image_config.text_suppression_settings or {}
+        logger.info(f"📝 Text suppression settings loaded: {text_suppression}")
+        
+        # Start with base prompt
+        prompt_parts = [base_prompt]
+        
+        # Add text suppression prompts FIRST (highest priority)
+        if text_suppression.get('suppressAllText', False):
+            logger.info("🚫 Adding text suppression prompts")
+            no_text_prompts = text_suppression.get('noTextPrompts', [])
+            if no_text_prompts:
+                # Add the first few most important text suppression prompts
+                for prompt in no_text_prompts[:3]:  # Use top 3 most important
+                    prompt_parts.append(prompt)
+                logger.info(f"   Added {len(no_text_prompts[:3])} no-text prompts")
+        
+        # Add text prohibitions
+        text_prohibitions = text_suppression.get('textProhibitions', [])
+        if text_prohibitions:
+            prohibition_text = "Avoid: " + ", ".join(text_prohibitions[:5])  # Top 5 prohibitions
+            prompt_parts.append(prohibition_text)
+            logger.info(f"   Added {len(text_prohibitions[:5])} text prohibitions")
+        
+        # Add visual-only focus
+        if text_suppression.get('focusOnVisuals', False):
+            visual_prompts = text_suppression.get('visualOnlyPrompts', [])
+            if visual_prompts:
+                prompt_parts.append(visual_prompts[0])  # Use the first visual-only prompt
+                logger.info(f"   Added visual-only focus prompt")
         
         # Get equipment details
         equipment_name = equipment.get('name', 'equipment')
@@ -141,9 +177,6 @@ class EnhancedImageGenerator:
         brand_guidelines = self.config.image_config.brand_guidelines
         visual_style = brand_guidelines.get('visualStyle', 'professional')
         brand_colors = brand_guidelines.get('brandColors', [])
-        
-        # Build contextual prompt
-        prompt_parts = [base_prompt]
         
         # Add equipment-specific context
         if equipment_description:
@@ -172,11 +205,16 @@ class EnhancedImageGenerator:
             safety_elements = safety_filters['requiredSafetyElements'][:2]  # Top 2
             prompt_parts.append(f"Ensure safety elements are visible: {', '.join(safety_elements)}.")
         
-        # Add watermark instruction
+        # Check watermark settings (should be disabled based on our updates)
         generation_rules = self.config.image_config.generation_rules
-        if generation_rules.get('includeWatermark', True):
-            watermark_position = generation_rules.get('watermarkPosition', 'bottom-right')
-            prompt_parts.append(f"Add Rental Village watermark in {watermark_position} corner.")
+        include_watermark = generation_rules.get('includeWatermark', False)
+        logger.info(f"🔖 Watermark setting: {include_watermark}")
+        
+        if include_watermark:
+            logger.warning("⚠️  Watermark is enabled but should be disabled for clean images")
+            # Don't add watermark instruction to maintain clean images
+        else:
+            logger.info("✅ Watermark disabled - maintaining clean image aesthetic")
         
         return " ".join(prompt_parts)
     
