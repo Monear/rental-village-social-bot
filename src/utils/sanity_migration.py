@@ -1,11 +1,11 @@
 import json
-from sanity.client import Client
+from sanity import Client
 import os
 import logging
 from dotenv import load_dotenv
 
 # Load environment variables from the project root .env file
-load_dotenv(dotenv_path='/Users/tyler/Documents/rental_village/social_media/.env')
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -145,5 +145,5 @@ def transform_product_to_sanity_format(product_data):
 
 if __name__ == "__main__":
     # Ensure you have mcp_rental_catalog_enhanced.json in src/data/
-    json_path = "/Users/tyler/Documents/rental_village/social_media/src/data/mcp_rental_catalog_enhanced.json"
+    json_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'mcp_rental_catalog_enhanced.json')
     migrate_equipment_catalog(json_path)

@@ -5,6 +5,7 @@ from pathlib import Path
 import requests
 from datetime import date, timedelta
 import random
+import time
 from dotenv import load_dotenv
 from src.utils.general import read_file_content
 
@@ -15,91 +16,112 @@ NOTION_DATABASE_ID = os.getenv("DATABASE_ID")
 def upload_image_to_notion(page_id, image_path, property_name="Creative"):
     """
     Uploads an image file to a Notion database page's files property using Notion's direct upload.
+    Includes retry logic for 524 timeout errors.
     """
-    try:
-        file_path = Path(image_path)
-        file_name = file_path.name
-        content_type_map = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.svg': 'image/svg+xml'
-        }
-        content_type = content_type_map.get(file_path.suffix.lower(), 'image/png')
-        headers = {
-            "Authorization": f"Bearer {NOTION_API_KEY}",
-            "Notion-Version": "2022-06-28",
-            "Content-Type": "application/json"
-        }
-        initiate_payload = {
-            "filename": file_name,
-            "content_type": content_type
-        }
-        initiate_response = requests.post(
-            "https://api.notion.com/v1/file_uploads", 
-            headers=headers, 
-            json=initiate_payload
-        )
-        initiate_response.raise_for_status()
-        initiate_data = initiate_response.json()
-        file_upload_id = initiate_data['id']
-        with open(image_path, 'rb') as f:
-            files = {
-                "file": (file_name, f, content_type)
+    max_retries = 3
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            file_path = Path(image_path)
+            file_name = file_path.name
+            content_type_map = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.svg': 'image/svg+xml'
             }
-            upload_headers = {
+            content_type = content_type_map.get(file_path.suffix.lower(), 'image/png')
+            headers = {
                 "Authorization": f"Bearer {NOTION_API_KEY}",
-                "Notion-Version": "2022-06-28"
+                "Notion-Version": "2022-06-28",
+                "Content-Type": "application/json"
             }
-            upload_response = requests.post(
-                f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send",
-                headers=upload_headers,
-                files=files
+            initiate_payload = {
+                "filename": file_name,
+                "content_type": content_type
+            }
+            initiate_response = requests.post(
+                "https://api.notion.com/v1/file_uploads", 
+                headers=headers, 
+                json=initiate_payload,
+                timeout=30  # Add timeout
             )
-            upload_response.raise_for_status()
-        upload_data = upload_response.json()
-        page_response = requests.get(
-            f"https://api.notion.com/v1/pages/{page_id}",
-            headers=headers
-        )
-        page_response.raise_for_status()
-        page_data = page_response.json()
-        existing_files = []
-        if property_name in page_data.get('properties', {}):
-            existing_files = page_data['properties'][property_name].get('files', [])
-        new_file = {
-            "type": "file_upload",
-            "file_upload": {
-                "id": file_upload_id
-            },
-            "name": file_name
-        }
-        updated_files = existing_files + [new_file]
-        update_payload = {
-            "properties": {
-                property_name: {
-                    "type": "files",
-                    "files": updated_files
+            initiate_response.raise_for_status()
+            initiate_data = initiate_response.json()
+            file_upload_id = initiate_data['id']
+            
+            with open(image_path, 'rb') as f:
+                files = {
+                    "file": (file_name, f, content_type)
+                }
+                upload_headers = {
+                    "Authorization": f"Bearer {NOTION_API_KEY}",
+                    "Notion-Version": "2022-06-28"
+                }
+                upload_response = requests.post(
+                    f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send",
+                    headers=upload_headers,
+                    files=files,
+                    timeout=120  # Longer timeout for file upload
+                )
+                upload_response.raise_for_status()
+                
+            upload_data = upload_response.json()
+            page_response = requests.get(
+                f"https://api.notion.com/v1/pages/{page_id}",
+                headers=headers,
+                timeout=30
+            )
+            page_response.raise_for_status()
+            page_data = page_response.json()
+            existing_files = []
+            if property_name in page_data.get('properties', {}):
+                existing_files = page_data['properties'][property_name].get('files', [])
+            new_file = {
+                "type": "file_upload",
+                "file_upload": {
+                    "id": file_upload_id
+                },
+                "name": file_name
+            }
+            updated_files = existing_files + [new_file]
+            update_payload = {
+                "properties": {
+                    property_name: {
+                        "type": "files",
+                        "files": updated_files
+                    }
                 }
             }
-        }
-        update_response = requests.patch(
-            f"https://api.notion.com/v1/pages/{page_id}",
-            headers=headers,
-            json=update_payload
-        )
-        update_response.raise_for_status()
-        return True
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error: {e}")
-        if hasattr(e, 'response') and e.response:
-            print(f"Response: {e.response.text}")
-        return False
-    except Exception as e:
-        print(f"Error uploading file: {e}")
-        return False
+            update_response = requests.patch(
+                f"https://api.notion.com/v1/pages/{page_id}",
+                headers=headers,
+                json=update_payload,
+                timeout=30
+            )
+            update_response.raise_for_status()
+            return True
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 524:
+                print(f"❌ Attempt {attempt + 1} failed with 524 timeout. Retrying in {retry_delay} seconds...")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+            print(f"HTTP Error: {e}")
+            if hasattr(e, 'response') and e.response:
+                print(f"Response: {e.response.text}")
+            return False
+        except Exception as e:
+            print(f"Error uploading file: {e}")
+            return False
+    
+    print(f"❌ Failed to upload after {max_retries} attempts")
+    return False
 
 def get_existing_notion_ideas(notion, database_id):
     """Fetches existing content ideas (titles and copies) from the Notion database."""

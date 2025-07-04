@@ -1,6 +1,6 @@
 import os
 import json
-from sanity.client import Client
+from sanity import Client
 import logging
 from dotenv import load_dotenv
 
@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from the project root .env file
-load_dotenv(dotenv_path='/Users/tyler/Documents/rental_village/social_media/.env')
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 
 # Sanity client configuration
 SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID", "2pxuaj9k")
@@ -88,5 +88,5 @@ def migrate_prompts(prompts_dir):
     logger.info(f"Finished prompt migration. Migrated {migrated_count} prompts.")
 
 if __name__ == "__main__":
-    prompts_directory = "/Users/tyler/Documents/rental_village/social_media/src/prompts/"
+    prompts_directory = os.path.join(os.path.dirname(__file__), '..', 'prompts')
     migrate_prompts(prompts_directory)

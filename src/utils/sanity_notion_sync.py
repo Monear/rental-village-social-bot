@@ -4,7 +4,7 @@
 import os
 import json
 import logging
-from sanity.client import Client
+from sanity import Client
 import notion_client
 
 # Configure logging

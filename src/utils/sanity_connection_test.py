@@ -2,7 +2,7 @@
 
 import os
 import logging
-from sanity.client import Client
+from sanity import Client
 import uuid
 from dotenv import load_dotenv
 
