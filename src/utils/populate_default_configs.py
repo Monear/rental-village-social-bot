@@ -102,10 +102,10 @@ def create_default_seasonal_settings():
             "winter": ["winter", "snow", "cold", "ice", "heating", "indoor projects"]
         },
         "seasonalEquipmentPriority": {
-            "spring": ["landscaping", "excavation", "lawn-care", "compaction", "material-handling"],
-            "summer": ["construction", "concrete", "demolition", "pumps", "generators"],
-            "fall": ["leaf-blowers", "chippers", "excavation", "landscaping", "cleanup"],
-            "winter": ["snow-removal", "heaters", "indoor-tools", "pumps", "generators"]
+            "spring": ["landscaping", "tillers", "lawn-care", "compaction", "material-handling"],
+            "summer": ["construction", "concrete", "air-compressors", "pumps", "generators"],
+            "fall": ["leaf-blowers", "chippers", "floor-equipment", "landscaping", "cleanup"],
+            "winter": ["snow-removal", "heaters", "indoor-tools", "hand-tools", "generators"]
         },
         "seasonalContentThemes": {
             "spring": ["Spring Preparation", "Landscaping Projects", "Clean-up Time", "Garden Ready"],

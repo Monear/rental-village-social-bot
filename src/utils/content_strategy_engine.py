@@ -40,17 +40,20 @@ class ContentStrategyEngine:
         self.config = config_loader
         self.sanity_client = sanity_client
         
-        # Content pillar mapping using actual Sanity categories
-        self.pillar_categories = {
-            'equipment_spotlight': ['Earth Moving Equipment', 'Concrete Equipment', 'Lift-Scaffold-Fence', 'Compaction Equipment'],
-            'project_showcase': ['Earth Moving Equipment', 'Concrete Equipment', 'Drills & Breakers', 'Saws'],
-            'industry_focus': ['Earth Moving Equipment', 'Lawn & Garden', 'Concrete Equipment', 'Moving Equipment'],
-            'seasonal_content': ['Lawn Care', 'Heating', 'Generators & Cords', 'Pumps: Gas & Electric'],
-            'safety_training': ['Drills & Breakers', 'Lift-Scaffold-Fence', 'Saws', 'Earth Moving Equipment'],
-            'educational_content': ['Hand Tools', 'Measuring Equipment', 'Floor Equipment', 'Fastening Tools'],
-            'customer_success': ['Earth Moving Equipment', 'Concrete Equipment', 'Lifts'],
-            'maintenance_tips': ['Generators & Cords', 'Pumps: Gas & Electric', 'Air Compressors & Tools']
-        }
+        # Cache for available categories to avoid repeated queries
+        self._categories_cache = None
+        
+        # Simple content pillars without hardcoded category mappings
+        self.content_pillars = [
+            'equipment_spotlight',
+            'project_showcase', 
+            'seasonal_content',
+            'safety_training',
+            'educational_content',
+            'industry_focus',
+            'customer_success',
+            'maintenance_tips'
+        ]
     
     def plan_strategic_content(self, num_ideas: int = 1) -> List[ContentPlan]:
         """Create strategic content plans based on business objectives"""
@@ -95,116 +98,29 @@ class ContentStrategyEngine:
         return plans
     
     def _select_strategic_pillar(self) -> str:
-        """Select content pillar based on weighted strategy"""
-        weights = self.config.content_strategy.pillar_weights
-        
-        # Create weighted selection
-        pillars = list(weights.keys())
-        probabilities = list(weights.values())
-        
-        # Normalize probabilities
-        total = sum(probabilities)
-        if total > 0:
-            probabilities = [p / total for p in probabilities]
-        else:
-            # Fallback to equal weights
-            probabilities = [1.0 / len(pillars)] * len(pillars)
-        
-        # Apply seasonal boost
-        current_season = self.config.seasonal_config.current_season
-        seasonal_boost = self.config.seasonal_config.seasonal_boosts.get('currentSeasonBoost', 1.0)
-        
-        # Boost seasonal content during current season
-        for i, pillar in enumerate(pillars):
-            if pillar == 'seasonal_content':
-                probabilities[i] *= seasonal_boost
-        
-        # Renormalize
-        total = sum(probabilities)
-        probabilities = [p / total for p in probabilities]
-        
-        # Weighted random selection
-        selected_pillar = random.choices(pillars, weights=probabilities)[0]
-        
-        logger.debug(f"Selected pillar: {selected_pillar} (weight: {weights.get(selected_pillar, 0)})")
+        """Select content pillar randomly"""
+        # Pure random selection from available pillars
+        selected_pillar = random.choice(self.content_pillars)
+        logger.debug(f"Selected pillar: {selected_pillar}")
         return selected_pillar
     
     def _select_optimal_platform(self, pillar: str) -> str:
-        """Select optimal platform based on pillar characteristics"""
-        platform_preferences = self.config.content_strategy.platform_preferences
-        
-        # Pillar-specific platform optimization
-        if pillar == 'equipment_spotlight':
-            # Equipment spotlight works well on Instagram (visual) and Facebook (detailed)
-            return random.choices(['Instagram', 'Facebook'], weights=[0.6, 0.4])[0]
-        elif pillar == 'project_showcase':
-            # Project showcases are visual and work great on Instagram
-            return random.choices(['Instagram', 'Facebook'], weights=[0.7, 0.3])[0]
-        elif pillar == 'educational_content':
-            # Educational content works best on Blog and Facebook
-            return random.choices(['Blog', 'Facebook'], weights=[0.6, 0.4])[0]
-        elif pillar == 'safety_training':
-            # Safety content should be comprehensive - Blog preferred
-            return random.choices(['Blog', 'Facebook'], weights=[0.8, 0.2])[0]
-        else:
-            # Use configured platform preferences
-            platforms = list(platform_preferences.keys())
-            weights = list(platform_preferences.values())
-            
-            # Normalize weights
-            total = sum(weights)
-            if total > 0:
-                weights = [w / total for w in weights]
-                return random.choices(platforms, weights=weights)[0]
-            else:
-                return 'Facebook'  # Default fallback
+        """Select platform randomly"""
+        # Simple random platform selection
+        platforms = ['Facebook', 'Instagram', 'Blog']
+        return random.choice(platforms)
     
     def _select_equipment_category(self, pillar: str) -> str:
-        """Select equipment category based on pillar and business strategy"""
-        # Get pillar-appropriate categories
-        available_categories = self.pillar_categories.get(pillar, ['Earth Moving Equipment'])
+        """Select equipment category randomly from all available categories"""
+        # Get all available categories from Sanity
+        available_categories = self._get_available_categories()
         
-        if pillar == 'seasonal_content':
-            # Use seasonal equipment priorities
-            current_season = self.config.seasonal_config.current_season
-            seasonal_priorities = self.config.seasonal_config.seasonal_equipment_priority.get(current_season, [])
-            
-            if seasonal_priorities:
-                # Convert seasonal priorities to actual Sanity categories
-                category_mapping = {
-                    'landscaping': 'Lawn & Garden',
-                    'construction': 'Earth Moving Equipment', 
-                    'snow-removal': 'Moving Equipment',
-                    'agriculture': 'Tillers',
-                    'material-handling': 'Moving Equipment',
-                    'leaf-blowers': 'Blower/Sprayer',
-                    'chippers': 'Wood Chipper',
-                    'excavation': 'Earth Moving Equipment',
-                    'cleanup': 'Moving Equipment',
-                    'heaters': 'Heating',
-                    'indoor-tools': 'Hand Tools',
-                    'pumps': 'Pumps: Gas & Electric',
-                    'generators': 'Generators & Cords'
-                }
-                
-                seasonal_categories = [category_mapping.get(p, 'Lawn & Garden') for p in seasonal_priorities]
-                available_seasonal = [cat for cat in seasonal_categories if cat in self.pillar_categories.get(pillar, [])]
-                if available_seasonal:
-                    return random.choice(available_seasonal)
-                else:
-                    return random.choice(seasonal_categories)
+        if not available_categories:
+            logger.warning("No equipment categories available, using fallback")
+            return 'Hand Tools'
         
-        # Apply business rules
-        equipment_rules = self.config.content_strategy.equipment_selection_rules
-        
-        if equipment_rules.get('prioritizeHighMargin', False):
-            # Prioritize high-margin categories (would need margin data)
-            high_margin_categories = ['Compaction', 'Concrete', 'Demolition']
-            available_high_margin = [cat for cat in high_margin_categories if cat in available_categories]
-            if available_high_margin:
-                return random.choice(available_high_margin)
-        
-        # Default to random selection from available categories
+        # Simple random selection from all available categories
+        # No hardcoded mappings or complex business rules - just pure randomization
         return random.choice(available_categories)
     
     def _get_seasonal_context(self, pillar: str) -> str:
@@ -218,33 +134,30 @@ class ContentStrategyEngine:
             return f"{current_season.title()} Context"
     
     def _calculate_priority_score(self, pillar: str, equipment_category: str, seasonal_context: str) -> float:
-        """Calculate priority score for content plan"""
-        base_score = 50.0
+        """Simple priority score - just randomize"""
+        # Simple random score between 50-100
+        return random.uniform(50.0, 100.0)
+    
+    def _get_available_categories(self) -> List[str]:
+        """Get all available equipment categories from Sanity"""
+        if self._categories_cache is not None:
+            return self._categories_cache
         
-        # Pillar weight contribution (0-40 points)
-        pillar_weight = self.config.content_strategy.pillar_weights.get(pillar, 0.1)
-        score = base_score + (pillar_weight * 40)
-        
-        # Seasonal boost (multiply by 1.0-2.0)
-        current_season = self.config.seasonal_config.current_season
-        if 'seasonal' in pillar.lower() or current_season.lower() in seasonal_context.lower():
-            seasonal_boost = self.config.seasonal_config.seasonal_boosts.get('currentSeasonBoost', 1.0)
-            score *= seasonal_boost
-        
-        # Equipment availability bonus (+10 points if available equipment)
         try:
-            equipment_count = self._get_available_equipment_count(equipment_category)
-            if equipment_count > 0:
-                score += min(equipment_count * 2, 10)  # Max 10 bonus points
+            result = self.sanity_client.query('*[_type == "equipment"]{ categories }')
+            categories = set()
+            
+            for item in result.get('result', []):
+                if item.get('categories'):
+                    categories.update(item['categories'])
+            
+            self._categories_cache = list(categories)
+            logger.info(f"Cached {len(self._categories_cache)} equipment categories")
+            return self._categories_cache
+            
         except Exception as e:
-            logger.warning(f"Could not check equipment availability: {e}")
-        
-        # Business rules bonus
-        equipment_rules = self.config.content_strategy.equipment_selection_rules
-        if equipment_rules.get('prioritizeNewEquipment', False):
-            score += 5  # Bonus for featuring new equipment
-        
-        return min(score, 100.0)  # Cap at 100
+            logger.error(f"Error fetching categories: {e}")
+            return ['Hand Tools', 'Lawn & Garden', 'Concrete Equipment']  # Fallback
     
     def _get_available_equipment_count(self, category: str) -> int:
         """Get count of available equipment in category"""

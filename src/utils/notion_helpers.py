@@ -273,5 +273,7 @@ def add_idea_to_notion(notion, idea, generate_image_with_gemini, num_images=3):
             else:
                 print(f"❌ Failed to generate images for '{idea['title']}'")
                 
+        return True  # Successfully added to Notion
     except Exception as e:
         print(f"Error adding idea to Notion: {e}")
+        return False  # Failed to add to Notion

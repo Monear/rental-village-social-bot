@@ -160,21 +160,21 @@ class ContentGenerator:
         # Step 3d: Parallel Content Generation
         logger.info("⚡ Step 3d: Parallel Content & Image Processing")
         
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Launch parallel tasks
-            content_future = executor.submit(
-                self._generate_content_text, 
-                plan, content_context, existing_ideas
-            )
-            
-            image_future = executor.submit(
-                self._run_async_image_enhancement,
+        # Generate content text first
+        logger.info("   🤖 Generating content text...")
+        content_text = self._generate_content_text(plan, content_context, existing_ideas)
+        
+        # Try image generation, but continue without it if there are API issues
+        logger.info("   🎨 Attempting image generation...")
+        try:
+            enhanced_images = await self.image_generator.enhance_equipment_images(
                 equipment_data, plan.pillar, plan.target_platform, content_context.get('themes', '')
             )
-            
-            # Wait for both to complete
-            content_text = content_future.result()
-            enhanced_images = image_future.result()
+            logger.info(f"   ✅ Generated {len(enhanced_images)} enhanced images")
+        except Exception as e:
+            logger.warning(f"   ⚠️  Image generation failed: {e}")
+            logger.info("   📝 Continuing without images - you can use Canva for final post images")
+            enhanced_images = []
         
         if not content_text:
             logger.error("Failed to generate content text")
@@ -259,7 +259,7 @@ class ContentGenerator:
             'themes': seasonal_themes,
             'seasonal_keywords': seasonal_keywords,
             'equipment_names': equipment_names,
-            'equipment_uses': list(set(equipment_uses)),
+            'equipment_uses': equipment_uses,
             'business_rationale': plan.business_rationale,
             'platform_config': platform_config,
             'priority_score': plan.priority_score
@@ -268,53 +268,76 @@ class ContentGenerator:
         return context
     
     def _generate_content_text(self, plan, content_context: dict, existing_ideas: list) -> dict:
-        """Generate content text using existing Gemini helpers"""
-        try:
-            logger.info("   🤖 Generating content text with Gemini...")
-            
-            # Build enhanced prompt based on strategic context
-            enhanced_prompt = self._build_strategic_prompt(plan, content_context)
-            
-            # Get content guidelines and business context
-            content_guidelines_result = sanity_client.query(
-                '*[_type == "contentPrompt" && title == "Content Generation Prompt"][0]'
-            )
-            content_guidelines = content_guidelines_result.get('result', {}).get('content', '')
-            
-            business_context_result = sanity_client.query('*[_type == "businessContext"][0]')
-            business_context = business_context_result.get('result', {})
-            
-            social_media_best_practices_result = sanity_client.query(
-                '*[_type == "contentPrompt" && title == "Social Media Best Practices"][0]'
-            )
-            social_media_best_practices = social_media_best_practices_result.get('result', {}).get('content', '')
-            
-            # Generate content using existing function with enhanced context
-            ideas = generate_ideas_with_gemini(
-                guidelines=f"{content_guidelines}\n\nSTRATEGIC CONTEXT:\n{enhanced_prompt}",
-                num_ideas=1,
-                user_input=None,
-                existing_ideas=existing_ideas,
-                machine_context=business_context,
-                social_media_best_practices=social_media_best_practices
-            )
-            
-            if ideas and len(ideas) > 0:
-                content = ideas[0]
-                # Add strategic metadata
-                content['content_pillar'] = plan.pillar
-                content['target_platform'] = plan.target_platform
-                content['equipment_category'] = plan.equipment_category
-                content['priority_score'] = plan.priority_score
-                content['generation_method'] = 'strategic_planning'
+        """Generate content text using existing Gemini helpers with retry logic"""
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"   🤖 Generating content text with Gemini (attempt {attempt + 1}/{max_retries})...")
                 
-                return content
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error generating content text: {e}")
-            return None
+                # Build enhanced prompt based on strategic context
+                enhanced_prompt = self._build_strategic_prompt(plan, content_context)
+                
+                # Get content guidelines and business context
+                content_guidelines_result = sanity_client.query(
+                    '*[_type == "contentPrompt" && title == "Content Generation Prompt"][0]'
+                )
+                content_guidelines = content_guidelines_result.get('result', {}).get('content', '')
+                
+                business_context_result = sanity_client.query('*[_type == "businessContext"][0]')
+                business_context = business_context_result.get('result', {})
+                
+                social_media_best_practices_result = sanity_client.query(
+                    '*[_type == "contentPrompt" && title == "Social Media Best Practices"][0]'
+                )
+                social_media_best_practices = social_media_best_practices_result.get('result', {}).get('content', '')
+                
+                # Generate content using existing function with enhanced context
+                ideas = generate_ideas_with_gemini(
+                    guidelines=f"{content_guidelines}\n\nSTRATEGIC CONTEXT:\n{enhanced_prompt}",
+                    num_ideas=1,
+                    user_input=None,
+                    existing_ideas=existing_ideas,
+                    machine_context=business_context,
+                    social_media_best_practices=social_media_best_practices
+                )
+                
+                if ideas and len(ideas) > 0:
+                    content = ideas[0]
+                    # Add strategic metadata
+                    content['pillar'] = plan.pillar  # Use 'pillar' for Notion compatibility
+                    content['content_pillar'] = plan.pillar
+                    content['target_platform'] = plan.target_platform
+                    content['equipment_category'] = plan.equipment_category
+                    content['priority_score'] = plan.priority_score
+                    content['generation_method'] = 'strategic_planning'
+                    
+                    logger.info("   ✅ Content generation successful!")
+                    return content
+                
+                logger.warning(f"   ⚠️  No ideas generated on attempt {attempt + 1}")
+                
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(f"   ⚠️  Content generation attempt {attempt + 1} failed: {error_msg}")
+                
+                # Check if it's a 503 error (API overloaded)
+                if "503" in error_msg or "overloaded" in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        logger.info(f"   ⏳ API overloaded, waiting {retry_delay} seconds before retry...")
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        logger.error("   ❌ All retry attempts failed due to API overload")
+                else:
+                    logger.error(f"   ❌ Non-retryable error: {error_msg}")
+                    break
+        
+        logger.error("   ❌ Content generation failed after all attempts")
+        return None
     
     def _build_strategic_prompt(self, plan, content_context: dict) -> str:
         """Build strategic prompt for content generation"""
@@ -350,13 +373,6 @@ class ContentGenerator:
         
         return "\n".join(prompt_parts)
     
-    def _run_async_image_enhancement(self, equipment_data, pillar, platform, content_context):
-        """Run async image enhancement in thread executor"""
-        return asyncio.run(
-            self.image_generator.enhance_equipment_images(
-                equipment_data, pillar, platform, content_context
-            )
-        )
     
     async def _optimize_for_platform(self, content_text: dict, enhanced_images: list, platform: str) -> dict:
         """Optimize content for specific platform"""

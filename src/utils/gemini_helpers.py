@@ -39,9 +39,13 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
         Also, incorporate general business information where relevant.
         ---
         Business and Machine Context:
-        {json.dumps(machine_context, indent=2)}
-        ---
         """
+        try:
+            prompt += json.dumps(machine_context, indent=2, default=str)
+        except (TypeError, ValueError) as e:
+            print(f"Warning: Could not serialize machine_context: {e}")
+            prompt += str(machine_context)
+        prompt += "\n---\n"
 
     if social_media_best_practices:
         prompt += f"""
@@ -71,15 +75,6 @@ def generate_ideas_with_gemini(guidelines, num_ideas, user_input=None, existing_
     prompt += """
     For each idea, provide a content pillar, a short catchy title (under 100 chars), the full post body, and 3-5 relevant keywords for an image search.
     Return your response as a valid JSON array of objects. Each object must have "pillar", "title", "body", and "keywords" keys.
-    Example:
-    [
-        {
-            "pillar": "Tool Spotlight",
-            "title": "Mini-Excavator: Small But Mighty",
-            "body": "Check out this 15-second video on the versatility of our new mini-excavator. Perfect for tight spaces and big jobs! #ToolRental #Excavator",
-            "keywords": "excavator, construction, digging, small space"
-        }
-    ]
     """
     print("Generating content ideas with Gemini...")
     try:
