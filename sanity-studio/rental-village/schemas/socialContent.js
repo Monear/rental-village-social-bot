@@ -26,11 +26,11 @@ export default defineType({
       options: {
         list: [
           { title: 'Equipment Spotlight', value: 'equipment_spotlight' },
-          { title: 'Project Showcase', value: 'project_showcase' },
           { title: 'Industry Focus', value: 'industry_focus' },
           { title: 'Safety Training', value: 'safety_training' },
           { title: 'Educational Content', value: 'educational_content' },
           { title: 'General Content', value: 'general_content' },
+          { title: 'Dad Jokes', value: 'dad_jokes' },
         ],
       },
     }),

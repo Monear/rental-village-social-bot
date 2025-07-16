@@ -46,13 +46,12 @@ class ContentStrategyEngine:
         # Simple content pillars without hardcoded category mappings
         self.content_pillars = [
             'equipment_spotlight',
-            'project_showcase', 
             'seasonal_content',
             'safety_training',
             'educational_content',
             'industry_focus',
-            'customer_success',
-            'maintenance_tips'
+            'maintenance_tips',
+            'dad_jokes'
         ]
     
     def plan_strategic_content(self, num_ideas: int = 1) -> List[ContentPlan]:
@@ -177,13 +176,12 @@ class ContentStrategyEngine:
         # Pillar rationale
         pillar_rationales = {
             'equipment_spotlight': "Showcase specific equipment to drive rental interest",
-            'project_showcase': "Demonstrate equipment in action to build customer confidence",
             'seasonal_content': "Capitalize on seasonal rental demand",
             'safety_training': "Build trust through safety education and compliance",
             'educational_content': "Establish expertise and support customer decision-making",
             'industry_focus': "Target specific industry segments for growth",
-            'customer_success': "Leverage social proof to attract new customers",
-            'maintenance_tips': "Add value and extend customer relationships"
+            'maintenance_tips': "Add value and extend customer relationships",
+            'dad_jokes': "Lighthearted humor content featuring rental equipment to engage audience and humanize brand"
         }
         
         rationales.append(pillar_rationales.get(pillar, "Strategic content generation"))

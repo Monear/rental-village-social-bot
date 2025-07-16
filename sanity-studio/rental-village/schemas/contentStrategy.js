@@ -38,13 +38,6 @@ export default {
           initialValue: 0.25
         },
         {
-          name: 'projectShowcase',
-          title: 'Project Showcase',
-          type: 'number',
-          validation: Rule => Rule.required().min(0).max(1),
-          initialValue: 0.2
-        },
-        {
           name: 'safetyTraining',
           title: 'Safety & Training',
           type: 'number',
@@ -57,7 +50,14 @@ export default {
           type: 'number',
           validation: Rule => Rule.required().min(0).max(1),
           initialValue: 0.1
-        }
+        },
+        {
+          name: 'dadJokes',
+          title: 'Dad Jokes',
+          type: 'number',
+          validation: Rule => Rule.required().min(0).max(1),
+          initialValue: 0.05
+        },
       ],
       validation: Rule => Rule.custom(weights => {
         if (!weights) return true
