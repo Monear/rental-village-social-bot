@@ -20,6 +20,11 @@ src/generated_images/
 *.jpg
 *.jpeg
 
+# But allow assets folder images to be tracked
+!assets/**/*.png
+!assets/**/*.jpg
+!assets/**/*.jpeg
+
 # Logs and temporary files
 *.log
 trace_*.py
