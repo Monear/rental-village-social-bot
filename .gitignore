@@ -24,3 +24,6 @@ src/generated_images/
 *.log
 trace_*.py
 *_trace_*.py
+
+# Local planning/notes (not for commit)
+NEXT_STEPS.md
