@@ -14,11 +14,11 @@
 The **Rental Village Social Media Bot** is an automated content generation system for equipment rental businesses. It combines AI-powered content creation with equipment data integration to generate engaging social media posts.
 
 ### Key Features
-- **AI Content Generation**: Uses Gemini/Groq APIs for intelligent content creation
+- **AI Content Generation**: Uses Gemini API for intelligent content creation
+- **Strategic Content Planning**: Business logic engine for content selection and targeting
 - **Equipment Integration**: Sanity CMS with organized equipment catalog
 - **Image Generation**: Automated image creation with safety validation
 - **Social Media Automation**: Automated Facebook posting with Notion workflow
-- **MCP Server**: FastMCP framework for tool integration
 
 ### Tech Stack
 - **Backend**: Python 3.11
@@ -32,28 +32,25 @@ The **Rental Village Social Media Bot** is an automated content generation syste
 
 ### System Components
 
-The application consists of four main containerized services:
+The application consists of three main containerized services:
 
 1. **Sanity Studio (`sanity-studio`)**: Headless CMS for data management
    - Port: 3333
    - Purpose: Equipment catalog, content prompts, business context
-   
-2. **MCP Server (`mcp-server`)**: FastAPI server with MCP-compliant interface
-   - Port: 8000
-   - Purpose: Secure data access layer for other services
-   
-3. **Content Generation (`content-generation`)**: AI-powered content creation
-   - Purpose: Generate social media content using Gemini API
+
+2. **Content Generation (`content-generation`)**: AI-powered content creation
+   - Purpose: Strategic content planning + Gemini API generation
+   - Key Component: `content_strategy_engine.py` for business-driven content selection
    - Storage: Saves to Sanity and syncs with Notion
-   
-4. **Social Automation (`social-automation`)**: Facebook posting automation
+
+3. **Social Automation (`social-automation`)**: Facebook posting automation
    - Port: 8080 (health check)
    - Purpose: Monitor Notion → Post to Facebook → Update status
 
 ### Data Flow
 
 ```
-Sanity Studio → MCP Server → Content Generation → Notion → Social Automation → Facebook
+Sanity Studio → Content Strategy Engine → Gemini API → Content Generation → Notion → Social Automation → Facebook
 ```
 
 ### Core Workflow
@@ -101,7 +98,7 @@ FACEBOOK_PAGE_ID=your_facebook_page_id
 docker-compose build
 
 # Start core services
-docker-compose up -d sanity-studio mcp-server
+docker-compose up -d sanity-studio
 
 # Generate content (on-demand)
 docker-compose run --rm content-generation python src/suggest_content.py --num-ideas 5

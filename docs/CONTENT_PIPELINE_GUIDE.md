@@ -254,7 +254,7 @@ AI knows platform specs:
 **Solution:**
 - Update prompts in Sanity CMS (add examples, adjust tone)
 - Provide more business context in equipment catalog
-- Check that MCP server is serving correct data
+- Check that Sanity CMS is accessible and data is up to date
 
 **Files to adjust:**
 - Sanity CMS: Prompt templates

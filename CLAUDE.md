@@ -117,9 +117,6 @@ sudo podman-compose run --rm content-generation python src/suggest_content.py
 # Access Sanity Studio
 # URL: http://localhost:3333
 
-# Access MCP Server  
-# URL: http://localhost:8000
-
 # Test social automation (in VENV)
 python tests/run_facebook_automation.py
 ```
@@ -127,9 +124,8 @@ python tests/run_facebook_automation.py
 ## Architecture Overview
 
 ### Core Services
-- **Sanity Studio** (localhost:3333): Headless CMS for prompt repo and generation guidelines, business information, equipment catalog and content archive
-- **MCP Server** (localhost:8000): FastAPI server exposing Sanity data via Model Context Protocol
-- **Content Generation**: Python service using Gemini API for content creation
+- **Sanity Studio** (localhost:3333): Headless CMS for prompt repo, business information, equipment catalog and content archive
+- **Content Generation**: Python service with strategic content planning engine and Gemini API for content creation
 - **Social Automation**: Automated posting to Facebook with Notion workflow integration
 
 ### Main Content Generation Flow
@@ -168,9 +164,6 @@ python src/utils/check_notion_db.py
 
 # Test Gemini API connectivity
 python tests/test_gemini_helpers.py
-
-# Check MCP server data
-curl http://localhost:8000/health
 ```
 
 ## Environment Variables Required
@@ -200,10 +193,11 @@ Key environment variables (see docker-compose.yml for complete list):
 
 ## Current System Status
 
-The codebase represents a sophisticated white-label social media content generation platform with:
+The codebase is a production social media content generation platform built for Rental Village with:
 - ✅ Containerized architecture with Docker Compose
-- ✅ Multi-service design (Sanity, MCP, Content Generation, Social Automation)
-- ✅ Advanced content strategy and equipment targeting algorithms  
+- ✅ Multi-service design (Sanity Studio, Content Generation, Social Automation)
+- ✅ **Strategic content planning engine** (`content_strategy_engine.py`) - the core intelligence driving content quality
+- ✅ Advanced equipment targeting based on business rules and seasonal context
 - ✅ Gemini 2.0 integration for text and image generation
 - ✅ Notion workflow integration for content approval
 - ✅ Facebook automation with scheduling

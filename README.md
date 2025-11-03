@@ -21,7 +21,7 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
 **AI & LLM:**
 - Google Gemini 2.0 Flash for text generation and image creation
 - GPT-style prompt engineering with strategic content templates
-- Model Context Protocol (MCP) for structured AI data access
+- Strategic content planning engine for business-driven content selection
 
 **Backend & Services:**
 - Python 3.11 with FastAPI for microservices
@@ -29,9 +29,9 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
 - Containerized architecture with health checks and logging
 
 **CMS & Data:**
-- Sanity.io headless CMS for content management
+- Sanity.io headless CMS for content management and equipment catalog
 - Notion API for approval workflows and content calendar
-- Custom MCP server exposing CMS data to AI models
+- Python Sanity client for direct data access
 
 **Integrations:**
 - Facebook Graph API for automated posting
@@ -47,32 +47,43 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
 │                     Content Generation Flow                     │
 └─────────────────────────────────────────────────────────────────┘
 
+┌──────────────────┐                    ┌──────────────────┐
+│   Sanity CMS     │                    │   Gemini 2.0     │
+│                  │                    │   Flash API      │
+│ • Equipment      │                    │                  │
+│ • Prompts        │                    │ • Text Gen       │
+│ • Business Data  │                    │ • Image Gen      │
+│ • Seasonal Rules │                    │ • SEO/Hashtags   │
+└────────┬─────────┘                    └────────┬─────────┘
+         │                                       │
+         │  ┌────────────────────────────────┐  │
+         └─►│  Content Strategy Engine       │◄─┘
+            │  (content_strategy_engine.py)  │
+            │                                │
+            │  1. Strategic pillar selection │
+            │  2. Equipment targeting        │
+            │  3. Seasonal context           │
+            │  4. Business rules & scoring   │
+            │  5. Priority ranking           │
+            └────────────┬───────────────────┘
+                         │
+                         ▼
+            ┌────────────────────────────────┐
+            │   Content Generation           │
+            │   (suggest_content.py)         │
+            │                                │
+            │  • Generate ideas with Gemini  │
+            │  • Create optimized posts      │
+            │  • Save to Sanity + Notion     │
+            └────────────┬───────────────────┘
+                         │
+                         ▼
 ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│ Sanity CMS   │◄────►│  MCP Server  │◄────►│   Gemini API │
-│              │      │  (FastAPI)   │      │   (AI/LLM)   │
-│ • Equipment  │      │              │      │              │
-│ • Prompts    │      │ Port: 8000   │      │ • Text Gen   │
-│ • Strategy   │      │              │      │ • Image Gen  │
-└──────────────┘      └──────────────┘      └──────────────┘
-       │                                            │
-       │                                            │
-       ▼                                            ▼
-┌──────────────────────────────────────────────────────────┐
-│         Content Generation Service (Python)              │
-│                                                           │
-│  1. Fetch business data from MCP                         │
-│  2. Generate content ideas with Gemini                   │
-│  3. Create optimized posts + images                      │
-│  4. Save to Sanity + sync to Notion                      │
-└──────────────────────────────────────────────────────────┘
-       │
-       ▼
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Notion     │      │Social Automation│    │  Facebook   │
-│              │      │   Scheduler    │     │   Graph API │
-│ • Review     │─────►│                │────►│             │
-│ • Approve    │      │ • Monitor      │     │ • Publish   │
-│ • Schedule   │      │ • Post         │     │ • Schedule  │
+│   Notion     │      │   Social     │      │  Facebook    │
+│              │      │  Automation  │      │  Graph API   │
+│ • Review     │─────►│              │─────►│              │
+│ • Approve    │      │ • Monitor    │      │ • Publish    │
+│ • Schedule   │      │ • Post       │      │ • Schedule   │
 └──────────────┘      └──────────────┘      └──────────────┘
 ```
 
@@ -98,7 +109,7 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
 - **Notion workflow** for content approval and collaboration
 - **Sanity CMS** for centralized content and catalog management
 - **Facebook API** for automated posting and scheduling
-- **Model Context Protocol** for AI-safe data access
+- **Strategic content engine** for business-driven content selection
 - **Webhook support** for real-time integrations
 
 ### 📊 Data-Driven Strategy
@@ -142,9 +153,6 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
    # Facebook (optional - for automated posting)
    FACEBOOK_PAGE_ACCESS_TOKEN=your_token
    FACEBOOK_PAGE_ID=your_page_id
-
-   # MCP Server
-   MCP_SERVER_URL=http://mcp-server:8000
    ```
 
 3. **Build and start the services:**
@@ -154,7 +162,6 @@ An end-to-end AI-powered marketing automation platform that generates, manages, 
 
    This will start:
    - **Sanity Studio** at `http://localhost:3333`
-   - **MCP Server** at `http://localhost:8000`
 
 ### Usage
 
@@ -175,11 +182,6 @@ docker-compose run --rm social-automation python src/social_automation/scheduler
 # Manage equipment catalog, content templates, and generated content
 ```
 
-**Check MCP Server health:**
-```bash
-curl http://localhost:8000/health
-```
-
 ## Project Structure
 
 ```
@@ -187,21 +189,18 @@ curl http://localhost:8000/health
 ├── src/
 │   ├── suggest_content.py          # Main content generation entry point
 │   ├── utils/
+│   │   ├── content_strategy_engine.py  # ⭐ Strategic content planning (the core!)
 │   │   ├── gemini_helpers.py       # Gemini API integration
 │   │   ├── notion_helpers.py       # Notion API wrapper
 │   │   ├── sanity_helpers.py       # Sanity CMS integration
-│   │   ├── content_strategy_engine.py  # Strategic content planning
 │   │   └── enhanced_image_generation.py # AI image generation
-│   ├── social_automation/
-│   │   ├── scheduler.py            # Automated posting orchestrator
-│   │   ├── status_monitor.py       # Notion status monitoring
-│   │   └── facebook_poster.py      # Facebook Graph API integration
-│   └── mcp_server/
-│       └── server.py                # FastAPI MCP server
+│   └── social_automation/
+│       ├── scheduler.py            # Automated posting orchestrator
+│       ├── status_monitor.py       # Notion status monitoring
+│       └── facebook_poster.py      # Facebook Graph API integration
 ├── sanity-studio/                   # Sanity.io CMS configuration
 ├── docker-compose.yml               # Multi-service orchestration
 ├── CLAUDE.md                        # Development guide for Claude Code
-├── GEMINI.md                        # Gemini API integration notes
 └── docs/                            # Additional documentation
 ```
 
@@ -213,11 +212,11 @@ curl http://localhost:8000/health
 - **Multimodal capabilities** for context-aware content
 - **Fast response times** (<2s average for text generation)
 
-### Why Model Context Protocol?
-- **Secure data access** for AI models with structured schemas
-- **Decoupled architecture** - CMS changes don't break AI logic
-- **Type-safe data** with Pydantic models
-- **Easy debugging** with FastAPI auto-generated docs
+### Why Strategic Content Engine?
+- **Business-driven decisions** - Content selection based on equipment availability, seasonal context, and business priorities
+- **Intelligent targeting** - Analyzes equipment categories, popularity scores, and rental demand patterns
+- **Content pillar balancing** - Ensures diverse content mix (educational, promotional, seasonal)
+- **Performance tracking** - Learns from past content to improve future recommendations
 
 ### Why Docker Compose?
 - **Consistent environments** across development and production
@@ -233,25 +232,25 @@ The platform uses a sophisticated algorithm to:
 4. **Optimize for platform** (character limits, image specs)
 5. **Maintain brand voice** through consistent prompting
 
-## White-Label / Adaptation Guide
+## Customization for Other Businesses
 
-This platform was built for equipment rental but can be adapted for any business needing content automation:
+While built for Rental Village's equipment rental needs, the architecture is adaptable:
 
-**What to customize:**
-- `sanity-studio/schemas/` - Define your product catalog structure
-- `src/utils/content_strategy_engine.py` - Adapt content pillars to your industry
-- Prompts in Sanity CMS - Adjust tone and topics for your brand
+**Core components that would need customization:**
+- `sanity-studio/schemas/equipment.js` - Replace with your product/service schema
+- `src/utils/content_strategy_engine.py` - Adjust content pillars and business logic
+- Content prompts in Sanity CMS - Modify for your brand voice and products
 
-**What stays the same:**
-- Core AI integration (Gemini, MCP)
+**Reusable components:**
+- Content generation flow (Gemini integration)
 - Approval workflow (Notion)
 - Publishing automation (Facebook API)
 - Docker orchestration
 
-**Example adaptations:**
-- **E-commerce:** Product launches, seasonal promotions, customer stories
-- **SaaS:** Feature announcements, customer success, educational content
-- **Real estate:** Property highlights, market updates, neighborhood guides
+**Potential applications:**
+- **E-commerce:** Product launches, promotions, customer stories
+- **SaaS:** Feature announcements, tutorials, customer success
+- **Professional services:** Service showcases, case studies, industry insights
 
 ## How It Works
 
@@ -309,7 +308,7 @@ This project demonstrates production-ready skills directly applicable to the [Ta
 → ✅ Built complete end-to-end platform reducing content creation time by 80% (40+ hrs → 8 hrs/month)
 
 **"Use APIs, webhooks, and LLMs to connect systems into smarter, scalable infrastructure"**
-→ ✅ Integrated Gemini API, Notion API, Facebook Graph API, Sanity CMS via custom MCP server
+→ ✅ Integrated Gemini API, Notion API, Facebook Graph API, Sanity CMS via direct Python client integration
 
 **"Automate repetitive GTM processes, from campaign QA to reporting to lead enrichment"**
 → ✅ Automated entire content pipeline: ideation → generation → approval → publishing with zero manual posting
@@ -318,13 +317,14 @@ This project demonstrates production-ready skills directly applicable to the [Ta
 → ✅ Identified real pain point (40+ hrs/month manual content creation), designed solution with stakeholder input, deployed to production
 
 **"Connect GTM systems into cohesive stacks"**
-→ ✅ Orchestrated multi-service architecture: CMS (Sanity) + Approval Workflow (Notion) + Publishing (Facebook) + AI (Gemini)
+→ ✅ Orchestrated multi-service architecture: CMS (Sanity) + Strategic Planning (content_strategy_engine.py) + AI (Gemini) + Workflow (Notion) + Publishing (Facebook)
 
 ### Technical Skills Match
 
 - ✅ **Full-stack engineering** - Python backend (FastAPI), Docker orchestration, API integrations
 - ✅ **LLM integration** - Gemini 2.0 for text + image generation, prompt engineering, cost optimization (85% vs GPT-4)
-- ✅ **Modern GTM stack** - Notion (workflow), Sanity (CMS), Facebook (publishing), MCP (AI data access)
+- ✅ **Modern GTM stack** - Notion (workflow), Sanity (CMS), Facebook (publishing)
+- ✅ **Strategic content planning** - Business logic engine for intelligent content selection and targeting
 - ✅ **Production deployment** - Docker Compose, health checks, error handling, monitoring
 - ✅ **Data-driven approach** - Strategic content planning based on equipment catalog, seasonal trends, performance metrics
 
@@ -353,17 +353,17 @@ This project demonstrates production-ready skills directly applicable to the [Ta
 **This AI-native platform:**
 - ✅ Flexible AI agents adapt to any content need
 - ✅ Cost-effective ($0.84/month for 12 posts)
-- ✅ Tightly integrated with business data (Sanity CMS → MCP → AI)
+- ✅ Tightly integrated with business data via strategic planning engine
 - ✅ End-to-end automation (ideation → publishing)
 
 ### Production-Ready Engineering
 
 **What makes this production-grade:**
 - **Containerized architecture** - Reproducible, scalable, isolated services
-- **Health checks & monitoring** - FastAPI endpoints, logging, error tracking
+- **Health checks & monitoring** - Service monitoring, logging, error tracking
 - **Graceful degradation** - Fallbacks for API failures, retry logic
-- **Documentation** - Comprehensive guides for development, deployment, troubleshooting
-- **White-label design** - Adaptable to any business (not hardcoded to one client)
+- **Comprehensive documentation** - Development guides, deployment instructions, troubleshooting
+- **Business logic separation** - Strategic planning engine decoupled from AI generation
 
 **Real client deployment:**
 - Currently running in production for Rental Village

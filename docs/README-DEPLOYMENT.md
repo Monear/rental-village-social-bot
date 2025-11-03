@@ -8,7 +8,7 @@ Complete deployment guide for the Rental Village Social Media Bot system, includ
 
 - **Content Generation**: AI-powered content creation using Gemini/Groq APIs
 - **Social Automation**: Facebook posting with cron-based scheduling (every 5 minutes)
-- **Data Management**: Sanity CMS with MCP server integration
+- **Data Management**: Sanity CMS with direct Python client integration
 - **Health Monitoring**: HTTP endpoints and comprehensive logging
 
 ## Quick Start
